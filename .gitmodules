@@ -1,3 +1,6 @@
 [submodule "python-cwlgen"]
 	path = python-cwlgen
 	url = git@github.com:common-workflow-language/python-cwlgen.git
+[submodule "schema_salad"]
+	path = schema_salad
+	url = git@github.com:common-workflow-language/schema_salad.git
