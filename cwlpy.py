@@ -3,7 +3,7 @@ import six
 
 CWL_VERSION_STRING = 'v1.0'
 
-class MutableWorfklow(Workflow):
+class MutableWorkflow(Workflow):
 
     def __init__(self, id):
         # Does not call super, since initializer requires a document
@@ -73,7 +73,7 @@ class MutableWorkflowStep(WorkflowStep):
 
     def add_output(self, step_output):
         if not isinstance(step_output, WorkflowStepOutput):
-            raise ValidationException("Not a WorfklowStepOutput")
+            raise ValidationException("Not a WorkflowStepOutput")
         output_ids = [o.id for o in self.out]
         if step_output.id in output_ids:
             raise ValidationError("Step already has output with id: " + step_output.id)
