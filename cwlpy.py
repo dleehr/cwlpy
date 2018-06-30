@@ -149,6 +149,11 @@ class MutableWorkflowOutputParameter(WorkflowOutputParameter):
 
 class WorkflowStepConnection(object):
 
+    # TODO: Verify input and output data types when connecting
+    # It's possible (and likely) that "run" will be file name
+    # and not a fully-formed object. But we can easily load that
+    # file and inspect its inputs/outputs/data types when connecting.
+
     def __init__(self, workflow, step):
         if step not in workflow.steps:
             raise ValidationError("step is not a part of workflow")
@@ -196,14 +201,3 @@ class WorkflowStepConnection(object):
     def connect_steps(self, step_output_id, step_input_id):
         # Likely need to promote steps to lists
         pass
-
-if __name__ == '__main__':
-    workflow = MutableWorfklow('myworkflow')
-    step = MutableWorkflowStep('mystep')
-    step.set_run('some-tool.cwl')
-    workflow.add_step(step)
-    connection = WorkflowStepConnection(workflow, step)
-    connection.connect_workflow_input('workflow-input', 'step-input')
-    connection.connect_workflow_output('workflow-output', 'step-output')
-    import pprint
-    pprint.pprint(workflow.save())
