@@ -4,5 +4,6 @@ from .cwlpy import MutableWorkflow, \
   MutableWorkflowStepOutput, \
   MutableInputParameter, \
   MutableWorkflowOutputParameter, \
-  WorkflowStepConnection
+  WorkflowStepConnection, \
+  ValidationException
 
