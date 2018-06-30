@@ -68,7 +68,7 @@ class MutableWorkflowStep(WorkflowStep):
             raise ValidationException("Not a WorkflowStepInput")
         input_ids = [i.id for i in self.in_]
         if step_input.id in input_ids:
-            raise ValidationError("Step already has input with id: " + step_input.id)
+            raise ValidationException("Step already has input with id: " + step_input.id)
         self.in_.append(step_input)
 
     def add_output(self, step_output):
@@ -76,7 +76,7 @@ class MutableWorkflowStep(WorkflowStep):
             raise ValidationException("Not a WorkflowStepOutput")
         output_ids = [o.id for o in self.out]
         if step_output.id in output_ids:
-            raise ValidationError("Step already has output with id: " + step_output.id)
+            raise ValidationException("Step already has output with id: " + step_output.id)
         self.out.append(step_output)
 
     def set_run(self, run):
@@ -165,7 +165,7 @@ class WorkflowStepConnection(object):
             if not isinstance(step, WorkflowStep):
                 raise ValidationException("step is not a WorkflowStep")
             if step not in workflow.steps:
-                raise ValidationError("step is not a part of workflow")
+                raise ValidationException("step is not a part of workflow")
         if not isinstance(workflow, Workflow):
             raise ValidationException("workflow is not a Workflow")
         self.workflow = workflow

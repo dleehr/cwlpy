@@ -1,4 +1,4 @@
-from unittest import TestCase, mock
+from unittest import TestCase
 from cwlpy import MutableWorkflow, MutableInputParameter, MutableWorkflowOutputParameter, ValidationException
 
 class MutableWorkflowTestCase(TestCase):
@@ -23,14 +23,14 @@ class MutableWorkflowTestCase(TestCase):
         self.workflow.add_input_parameter(input_parameter)
         self.assertIn(input_parameter, self.workflow.inputs)
 
-    def test_validates_add_input_parameter(self):
+    def test_validates_add_input_parameter_type(self):
         with self.assertRaises(ValidationException):
             self.workflow.add_input_parameter('not-input-parameter')
 
     def test_finds_input_parameter_by_id(self):
         input_parameter = MutableInputParameter('input-2')
         self.workflow.add_input_parameter(input_parameter)
-        self.assertIsNotNone(self.workflow.input_parameter_by_id('input-2'))
+        self.assertEqual(input_parameter, self.workflow.input_parameter_by_id('input-2'))
         self.assertIsNone(self.workflow.input_parameter_by_id('foobar'))
 
     def test_add_output_parameter(self):
