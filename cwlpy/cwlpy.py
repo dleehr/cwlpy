@@ -1,25 +1,42 @@
 from cwl_schema import *
 import six
+import os
 
 CWL_VERSION_STRING = 'v1.0'
+LOADING_OPTIONS = LoadingOptions()
+BASE_URI = file_uri(os.getcwd())
+
+
+class TemplateDocs(object):
+    # These should probably be factories
+    Workflow = {
+        'class': 'Workflow',
+        'cwlVersion': CWL_VERSION_STRING,
+        'inputs': [],
+        'outputs': [],
+        'steps': [],
+    }
+
+    WorkflowStep = {
+        'id': '',
+        'in': [],
+        'out': [],
+        'run': '',
+    }
+
+    WorkflowStepInput = {
+        'id': '',
+    }
+
+    MutableWorkflowStepOutput = {
+        'id': '',
+    }
 
 class MutableWorkflow(Workflow):
 
     def __init__(self, id):
-        # Does not call super, since initializer requires a document
-        # Required fields
-        self.inputs = []
-        self.outputs = []
-        self.steps = []
-
-        # Optional fields
+        super(MutableWorkflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
         self.id = id
-        self.requirements = []
-        self.hints = []
-        self.label = None
-        self.doc = None
-        self.cwlVersion = CWL_VERSION_STRING
-        self.extension_fields = {}
 
     def add_step(self, step):
         # Must be a step!
@@ -46,22 +63,8 @@ class MutableWorkflow(Workflow):
 
 class MutableWorkflowStep(WorkflowStep):
 
-    # Which fields are required per the spec?
     def __init__(self, id):
-        # Required fields
-        self.id = id
-        self.in_ = [] # array of WorkflowStepInput
-        self.out = [] # array of WorkflowStepOutput
-        self.run = None # string | CommandLineTool | ExpressionTool | Workflow
-
-        # Optional fields
-        self.requirements = []
-        self.hints = []
-        self.label = None
-        self.doc = None
-        self.scatter = None # string | array<string>
-        self.scatterMethod = None
-        self.extension_fields = {}
+        super(MutableWorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
 
     def add_input(self, step_input):
         if not isinstance(step_input, WorkflowStepInput):
@@ -96,12 +99,7 @@ class MutableWorkflowStep(WorkflowStep):
 class MutableWorkflowStepInput(WorkflowStepInput):
 
     def __init__(self, id):
-        self.id = id
-        self.source = None # string | array<string>
-        self.linkMerge = None
-        self.default = None
-        self.valueFrom = None
-        self.extension_fields = {}
+        super(MutableWorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
 
     def set_source(self, source):
         # TODO: Also check for array of strings, since it's a sink type
@@ -111,8 +109,7 @@ class MutableWorkflowStepInput(WorkflowStepInput):
 class MutableWorkflowStepOutput(WorkflowStepOutput):
 
     def __init__(self, id):
-        self.id = id
-        self.extension_fields = {}
+        super(MutableWorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
 
 class MutableInputParameter(InputParameter):
 
