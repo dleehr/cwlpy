@@ -1,5 +1,7 @@
 from unittest import TestCase
+
 from cwlpy import MutableWorkflowStep, MutableWorkflowStepInput, MutableWorkflowStepOutput, ValidationException
+
 
 class MutableWorkflowStepTestCase(TestCase):
 
