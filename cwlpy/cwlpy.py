@@ -161,13 +161,13 @@ class WorkflowStepConnection(object):
     # file and inspect its inputs/outputs/data types when connecting.
 
     def __init__(self, workflow, steps):
+        if not isinstance(workflow, cwl_schema.Workflow):
+            raise ValidationException("workflow is not a Workflow")
         for step in steps:
             if not isinstance(step, cwl_schema.WorkflowStep):
                 raise ValidationException("step is not a WorkflowStep")
             if step not in workflow.steps:
                 raise ValidationException("step is not a part of workflow")
-        if not isinstance(workflow, cwl_schema.Workflow):
-            raise ValidationException("workflow is not a Workflow")
         self.workflow = workflow
         self.steps = steps
 
