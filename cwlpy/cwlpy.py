@@ -1,6 +1,7 @@
-from cwl_schema import *
-import six
 import os
+import six
+
+from cwl_schema import *
 
 CWL_VERSION_STRING = 'v1.0'
 LOADING_OPTIONS = LoadingOptions()
@@ -28,9 +29,18 @@ class TemplateDocs(object):
         'id': '',
     }
 
-    MutableWorkflowStepOutput = {
+    WorkflowStepOutput = {
         'id': '',
     }
+
+    InputParameter = {
+        'id': '',
+    }
+
+    WorkflowOutputParameter = {
+        'id': '',
+    }
+
 
 class MutableWorkflow(Workflow):
 
@@ -106,42 +116,23 @@ class MutableWorkflowStepInput(WorkflowStepInput):
         # TODO: Inspect the link and make sure the type is valid
         self.source = source
 
+
 class MutableWorkflowStepOutput(WorkflowStepOutput):
 
     def __init__(self, id):
-        super(MutableWorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
+        super(MutableWorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepOutput, id, LOADING_OPTIONS)
+
 
 class MutableInputParameter(InputParameter):
 
     def __init__(self, id):
-        self.id = id
-        self.label = None
-        self.extension_fields = {}
-        self.secondaryFiles = None
-        self.streamable = None
-        self.doc = None
-        self.format = None
-        self.inputBinding = None
-        self.default = None
-        self.type = None
+        super(MutableInputParameter, self).__init__(TemplateDocs.InputParameter, id, LOADING_OPTIONS)
 
-        # Lots more fields to fill out here
-        # https://www.commonwl.org/v1.0/Workflow.html#InputParameter
 
 class MutableWorkflowOutputParameter(WorkflowOutputParameter):
 
     def __init__(self, id):
-        self.id = id
-        self.extension_fields = {}
-        self.label = None
-        self.secondaryFiles = None
-        self.streamable = None
-        self.doc = None
-        self.outputBinding = None
-        self.format = None
-        self.outputSource = None
-        self.linkMerge = None
-        self.type = None
+        super(MutableWorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
 
     def set_outputSource(self, outputSource):
         if not isinstance(outputSource, six.string_types):
@@ -149,6 +140,7 @@ class MutableWorkflowOutputParameter(WorkflowOutputParameter):
             # TODO: Inspect the link and make sure the type is valid
             raise ValidationException("outputSource should be a string")
         self.outputSource = outputSource
+
 
 class WorkflowStepConnection(object):
 
@@ -229,5 +221,4 @@ class WorkflowStepConnection(object):
         workflow_step_input = MutableWorkflowStepInput(step_input_id)
         source = '{}/{}'.format(output_step.id, step_output_id)
         workflow_step_input.set_source(source)
-        input_step.add_input(workflow_step_input) # Should raise if already connected
-
+        input_step.add_input(workflow_step_input)  # Should raise if already connected
