@@ -111,8 +111,17 @@ class MutableWorkflowStepInput(WorkflowStepInput):
     def __init__(self, id):
         super(MutableWorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
 
+    @staticmethod
+    def _is_list_of_strings(source_list):
+        if isinstance(source_list, list):
+            return all([isinstance(source, six.string_types) for source in source_list ])
+        else:
+            return False
+
     def set_source(self, source):
-        # TODO: Also check for array of strings, since it's a sink type
+        # Validate that it's a string or a list of strings
+        if not self._is_list_of_strings(source) and not isinstance(source, six.string_types):
+            raise ValidationException("Source must be a string or array of strings")
         # TODO: Inspect the link and make sure the type is valid
         self.source = source
 
