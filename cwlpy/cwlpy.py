@@ -1,11 +1,14 @@
 import os
 import six
-
-from cwl_schema import *
+import cwl_schema
 
 CWL_VERSION_STRING = 'v1.0'
-LOADING_OPTIONS = LoadingOptions()
-BASE_URI = file_uri(os.getcwd())
+LOADING_OPTIONS = cwl_schema.LoadingOptions()
+BASE_URI = cwl_schema.file_uri(os.getcwd())
+
+
+class ValidationException(cwl_schema.ValidationException):
+    pass
 
 
 class TemplateDocs(object):
@@ -42,7 +45,7 @@ class TemplateDocs(object):
     }
 
 
-class MutableWorkflow(Workflow):
+class MutableWorkflow(cwl_schema.Workflow):
 
     def __init__(self, id):
         super(MutableWorkflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
@@ -50,7 +53,7 @@ class MutableWorkflow(Workflow):
 
     def add_step(self, step):
         # Must be a step!
-        if not isinstance(step, WorkflowStep):
+        if not isinstance(step, cwl_schema.WorkflowStep):
             raise ValidationException("Not a WorkflowStep")
         self.steps.append(step)
 
@@ -61,23 +64,23 @@ class MutableWorkflow(Workflow):
         return None
 
     def add_input_parameter(self, input_parameter):
-        if not isinstance(input_parameter, InputParameter):
+        if not isinstance(input_parameter, cwl_schema.InputParameter):
             raise ValidationException("Not an InputParameter")
         self.inputs.append(input_parameter)
 
     def add_output_parameter(self, output_parameter):
-        if not isinstance(output_parameter, WorkflowOutputParameter):
+        if not isinstance(output_parameter, cwl_schema.WorkflowOutputParameter):
             raise ValidationException("Not an WorkflowOutputParameter")
         self.outputs.append(output_parameter)
 
 
-class MutableWorkflowStep(WorkflowStep):
+class MutableWorkflowStep(cwl_schema.WorkflowStep):
 
     def __init__(self, id):
         super(MutableWorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
 
     def add_input(self, step_input):
-        if not isinstance(step_input, WorkflowStepInput):
+        if not isinstance(step_input, cwl_schema.WorkflowStepInput):
             raise ValidationException("Not a WorkflowStepInput")
         input_ids = [i.id for i in self.in_]
         if step_input.id in input_ids:
@@ -85,7 +88,7 @@ class MutableWorkflowStep(WorkflowStep):
         self.in_.append(step_input)
 
     def add_output(self, step_output):
-        if not isinstance(step_output, WorkflowStepOutput):
+        if not isinstance(step_output, cwl_schema.WorkflowStepOutput):
             raise ValidationException("Not a WorkflowStepOutput")
         output_ids = [o.id for o in self.out]
         if step_output.id in output_ids:
@@ -94,7 +97,7 @@ class MutableWorkflowStep(WorkflowStep):
 
     def set_run(self, run):
         # Would like this to be a @property, but that's awkward with the codegen
-        allowed_types = [six.string_types, CommandLineTool, ExpressionTool, Workflow]
+        allowed_types = [six.string_types, cwl_schema.CommandLineTool, cwl_schema.ExpressionTool, cwl_schema.Workflow]
         if not any([isinstance(run, allowed) for allowed in allowed_types]):
             raise ValidationException("Not an allowed type")
         self.run = run
@@ -106,7 +109,7 @@ class MutableWorkflowStep(WorkflowStep):
         return None
 
 
-class MutableWorkflowStepInput(WorkflowStepInput):
+class MutableWorkflowStepInput(cwl_schema.WorkflowStepInput):
 
     def __init__(self, id):
         super(MutableWorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
@@ -126,19 +129,19 @@ class MutableWorkflowStepInput(WorkflowStepInput):
         self.source = source
 
 
-class MutableWorkflowStepOutput(WorkflowStepOutput):
+class MutableWorkflowStepOutput(cwl_schema.WorkflowStepOutput):
 
     def __init__(self, id):
         super(MutableWorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepOutput, id, LOADING_OPTIONS)
 
 
-class MutableInputParameter(InputParameter):
+class MutableInputParameter(cwl_schema.InputParameter):
 
     def __init__(self, id):
         super(MutableInputParameter, self).__init__(TemplateDocs.InputParameter, id, LOADING_OPTIONS)
 
 
-class MutableWorkflowOutputParameter(WorkflowOutputParameter):
+class MutableWorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
 
     def __init__(self, id):
         super(MutableWorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
@@ -160,11 +163,11 @@ class WorkflowStepConnection(object):
 
     def __init__(self, workflow, steps):
         for step in steps:
-            if not isinstance(step, WorkflowStep):
+            if not isinstance(step, cwl_schema.WorkflowStep):
                 raise ValidationException("step is not a WorkflowStep")
             if step not in workflow.steps:
                 raise ValidationException("step is not a part of workflow")
-        if not isinstance(workflow, Workflow):
+        if not isinstance(workflow, cwl_schema.Workflow):
             raise ValidationException("workflow is not a Workflow")
         self.workflow = workflow
         self.steps = steps
