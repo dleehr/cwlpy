@@ -7,6 +7,13 @@ LOADING_OPTIONS = cwl_schema.LoadingOptions()
 BASE_URI = cwl_schema.file_uri(os.getcwd())
 
 
+def _is_list_of_strings(source_list):
+    if isinstance(source_list, list):
+        return all([isinstance(source, six.string_types) for source in source_list])
+    else:
+        return False
+
+
 class ValidationException(cwl_schema.ValidationException):
     pass
 
@@ -114,16 +121,9 @@ class WorkflowStepInput(cwl_schema.WorkflowStepInput):
     def __init__(self, id):
         super(WorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
 
-    @staticmethod
-    def _is_list_of_strings(source_list):
-        if isinstance(source_list, list):
-            return all([isinstance(source, six.string_types) for source in source_list ])
-        else:
-            return False
-
     def set_source(self, source):
         # Validate that it's a string or a list of strings
-        if not self._is_list_of_strings(source) and not isinstance(source, six.string_types):
+        if not _is_list_of_strings(source) and not isinstance(source, six.string_types):
             raise ValidationException("Source must be a string or array of strings")
         # TODO: Inspect the link and make sure the type is valid
         self.source = source
@@ -147,10 +147,9 @@ class WorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
         super(WorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
 
     def set_outputSource(self, outputSource):
-        if not isinstance(outputSource, six.string_types):
-            # TODO: Also check for array of strings, since it's a sink type
-            # TODO: Inspect the link and make sure the type is valid
-            raise ValidationException("outputSource should be a string")
+        if not _is_list_of_strings(outputSource) and not isinstance(outputSource, six.string_types):
+            raise ValidationException("outputSource must be a string or array of strings")
+        # TODO: Inspect the link and make sure the type is valid
         self.outputSource = outputSource
 
 
