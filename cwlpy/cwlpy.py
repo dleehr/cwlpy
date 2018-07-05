@@ -45,10 +45,10 @@ class TemplateDocs(object):
     }
 
 
-class MutableWorkflow(cwl_schema.Workflow):
+class Workflow(cwl_schema.Workflow):
 
     def __init__(self, id):
-        super(MutableWorkflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
+        super(Workflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
         self.id = id
 
     def add_step(self, step):
@@ -74,10 +74,10 @@ class MutableWorkflow(cwl_schema.Workflow):
         self.outputs.append(output_parameter)
 
 
-class MutableWorkflowStep(cwl_schema.WorkflowStep):
+class WorkflowStep(cwl_schema.WorkflowStep):
 
     def __init__(self, id):
-        super(MutableWorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
+        super(WorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
 
     def add_input(self, step_input):
         if not isinstance(step_input, cwl_schema.WorkflowStepInput):
@@ -109,10 +109,10 @@ class MutableWorkflowStep(cwl_schema.WorkflowStep):
         return None
 
 
-class MutableWorkflowStepInput(cwl_schema.WorkflowStepInput):
+class WorkflowStepInput(cwl_schema.WorkflowStepInput):
 
     def __init__(self, id):
-        super(MutableWorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
+        super(WorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
 
     @staticmethod
     def _is_list_of_strings(source_list):
@@ -129,22 +129,22 @@ class MutableWorkflowStepInput(cwl_schema.WorkflowStepInput):
         self.source = source
 
 
-class MutableWorkflowStepOutput(cwl_schema.WorkflowStepOutput):
+class WorkflowStepOutput(cwl_schema.WorkflowStepOutput):
 
     def __init__(self, id):
-        super(MutableWorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepOutput, id, LOADING_OPTIONS)
+        super(WorkflowStepOutput, self).__init__(TemplateDocs.WorkflowStepOutput, id, LOADING_OPTIONS)
 
 
-class MutableInputParameter(cwl_schema.InputParameter):
-
-    def __init__(self, id):
-        super(MutableInputParameter, self).__init__(TemplateDocs.InputParameter, id, LOADING_OPTIONS)
-
-
-class MutableWorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
+class InputParameter(cwl_schema.InputParameter):
 
     def __init__(self, id):
-        super(MutableWorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
+        super(InputParameter, self).__init__(TemplateDocs.InputParameter, id, LOADING_OPTIONS)
+
+
+class WorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
+
+    def __init__(self, id):
+        super(WorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
 
     def set_outputSource(self, outputSource):
         if not isinstance(outputSource, six.string_types):
@@ -176,9 +176,9 @@ class WorkflowStepConnection(object):
         # If workflow has an input parameter, get it
         input_parameter = self.workflow.input_parameter_by_id(workflow_input_id)
         if not input_parameter:
-            input_parameter = MutableInputParameter(workflow_input_id)
+            input_parameter = InputParameter(workflow_input_id)
             self.workflow.add_input_parameter(input_parameter)
-        workflow_step_input = MutableWorkflowStepInput(step_input_id)
+        workflow_step_input = WorkflowStepInput(step_input_id)
         # Now connect them
         workflow_step_input.source = input_parameter
         # This verifies the step is not already connected
@@ -200,10 +200,10 @@ class WorkflowStepConnection(object):
         # If step has an output, get it
         workflow_step_output = step.workflow_step_output_by_id(step_output_id)
         if not workflow_step_output:
-            workflow_step_output = MutableWorkflowStepOutput(step_output_id)
+            workflow_step_output = WorkflowStepOutput(step_output_id)
             step.add_output(workflow_step_output)
         # Instantiate a workflow output
-        output_parameter = MutableWorkflowOutputParameter(workflow_output_id)
+        output_parameter = WorkflowOutputParameter(workflow_output_id)
         # Now connect them
         output_source = '{}/{}'.format(step.id, step_output_id)
         output_parameter.set_outputSource(output_source)
@@ -228,9 +228,9 @@ class WorkflowStepConnection(object):
         output_step, input_step = self.steps
         workflow_step_output = output_step.workflow_step_output_by_id(step_output_id)
         if not workflow_step_output:
-            workflow_step_output = MutableWorkflowStepOutput(step_output_id)
+            workflow_step_output = WorkflowStepOutput(step_output_id)
             output_step.add_output(workflow_step_output)
-        workflow_step_input = MutableWorkflowStepInput(step_input_id)
+        workflow_step_input = WorkflowStepInput(step_input_id)
         source = '{}/{}'.format(output_step.id, step_output_id)
         workflow_step_input.set_source(source)
         input_step.add_input(workflow_step_input)  # Should raise if already connected

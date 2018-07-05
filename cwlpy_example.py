@@ -1,10 +1,10 @@
 from cwlpy import *
 import pprint
 
-workflow = MutableWorkflow('myworkflow')
-step1 = MutableWorkflowStep('step1')
+workflow = Workflow('myworkflow')
+step1 = WorkflowStep('step1')
 step1.set_run('step1-tool.cwl')
-step2 = MutableWorkflowStep('step2')
+step2 = WorkflowStep('step2')
 step2.set_run('step2-tool.cwl')
 workflow.add_step(step1)
 workflow.add_step(step2)

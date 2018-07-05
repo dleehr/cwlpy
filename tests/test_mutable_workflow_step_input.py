@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from cwlpy import MutableWorkflowStepInput, ValidationException
+from cwlpy import WorkflowStepInput, ValidationException
 
 
-class MutableWorkflowStepInputTestCase(TestCase):
+class WorkflowStepInputTestCase(TestCase):
 
     def setUp(self):
-        self.step_input = MutableWorkflowStepInput('my-step-input')
+        self.step_input = WorkflowStepInput('my-step-input')
 
     def test_id(self):
         self.assertEqual(self.step_input.id, 'my-step-input')

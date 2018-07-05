@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from cwlpy import MutableWorkflow, MutableInputParameter, MutableWorkflowOutputParameter, ValidationException
+from cwlpy import Workflow, InputParameter, WorkflowOutputParameter, ValidationException
 
 
-class MutableWorkflowTestCase(TestCase):
+class WorkflowTestCase(TestCase):
 
     def setUp(self):
-        self.workflow = MutableWorkflow('my-workflow')
+        self.workflow = Workflow('my-workflow')
 
     def test_id(self):
         self.assertEqual(self.workflow.id, 'my-workflow')
@@ -21,7 +21,7 @@ class MutableWorkflowTestCase(TestCase):
             self.workflow.add_step('not-a-workflowstep')
 
     def test_add_input_parameter(self):
-        input_parameter = MutableInputParameter('input-1')
+        input_parameter = InputParameter('input-1')
         self.workflow.add_input_parameter(input_parameter)
         self.assertIn(input_parameter, self.workflow.inputs)
 
@@ -30,13 +30,13 @@ class MutableWorkflowTestCase(TestCase):
             self.workflow.add_input_parameter('not-input-parameter')
 
     def test_finds_input_parameter_by_id(self):
-        input_parameter = MutableInputParameter('input-2')
+        input_parameter = InputParameter('input-2')
         self.workflow.add_input_parameter(input_parameter)
         self.assertEqual(input_parameter, self.workflow.input_parameter_by_id('input-2'))
         self.assertIsNone(self.workflow.input_parameter_by_id('foobar'))
 
     def test_add_output_parameter(self):
-        output_parameter = MutableWorkflowOutputParameter('output-1')
+        output_parameter = WorkflowOutputParameter('output-1')
         self.workflow.add_output_parameter(output_parameter)
         self.assertIn(output_parameter, self.workflow.outputs)
 

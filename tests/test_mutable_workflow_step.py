@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from cwlpy import MutableWorkflowStep, MutableWorkflowStepInput, MutableWorkflowStepOutput, ValidationException
+from cwlpy import WorkflowStep, WorkflowStepInput, WorkflowStepOutput, ValidationException
 
 
-class MutableWorkflowStepTestCase(TestCase):
+class WorkflowStepTestCase(TestCase):
 
     def setUp(self):
-        self.step = MutableWorkflowStep('my-step')
+        self.step = WorkflowStep('my-step')
 
     def test_id(self):
         self.assertEqual(self.step.id, 'my-step')
@@ -16,7 +16,7 @@ class MutableWorkflowStepTestCase(TestCase):
         self.assertEqual(saved['id'], 'my-step')
 
     def test_add_input(self):
-        step_input = MutableWorkflowStepInput('step-input-1')
+        step_input = WorkflowStepInput('step-input-1')
         self.step.add_input(step_input)
         self.assertIn(step_input, self.step.in_)
 
@@ -25,12 +25,12 @@ class MutableWorkflowStepTestCase(TestCase):
             self.step.add_input('a string')
 
     def test_validates_add_input_uniqueness(self):
-        self.step.add_input(MutableWorkflowStepInput('step-input-1'))
+        self.step.add_input(WorkflowStepInput('step-input-1'))
         with self.assertRaises(ValidationException):
-            self.step.add_input(MutableWorkflowStepInput('step-input-1'))
+            self.step.add_input(WorkflowStepInput('step-input-1'))
 
     def test_add_output(self):
-        step_output = MutableWorkflowStepOutput('step-output-1')
+        step_output = WorkflowStepOutput('step-output-1')
         self.step.add_output(step_output)
         self.assertIn(step_output, self.step.out)
 
@@ -48,7 +48,7 @@ class MutableWorkflowStepTestCase(TestCase):
         self.assertEqual(self.step.run, 'tool.cwl')
 
     def test_finds_workflow_step_output_by_id(self):
-        step_output = MutableWorkflowStepOutput('step-output-1')
+        step_output = WorkflowStepOutput('step-output-1')
         self.step.add_output(step_output)
         self.assertEqual(self.step.workflow_step_output_by_id('step-output-1'), step_output)
         self.assertIsNone(self.step.workflow_step_output_by_id('foobar'))
