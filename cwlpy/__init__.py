@@ -1,8 +1,9 @@
-from .cwlpy import MutableWorkflow, \
-  MutableWorkflowStep, \
-  MutableWorkflowStepInput, \
-  MutableWorkflowStepOutput, \
-  MutableInputParameter, \
-  MutableWorkflowOutputParameter, \
-  WorkflowStepConnection
+from .cwlpy import Workflow, \
+  WorkflowStep, \
+  WorkflowStepInput, \
+  WorkflowStepOutput, \
+  InputParameter, \
+  WorkflowOutputParameter, \
+  WorkflowStepConnection, \
+  ValidationException
 

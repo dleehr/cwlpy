@@ -1,6 +1,6 @@
 [submodule "schema_salad"]
 	path = schema_salad
-	url = git@github.com:common-workflow-language/schema_salad.git
+	url = https://github.com/common-workflow-language/schema_salad.git
 [submodule "common-workflow-language"]
 	path = common-workflow-language
-	url = git@github.com:common-workflow-language/common-workflow-language.git
+	url = https://github.com/common-workflow-language/common-workflow-language.git

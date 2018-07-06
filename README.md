@@ -1,4 +1,7 @@
 # cwlpy
+
+[![Build Status](https://travis-ci.org/dleehr/cwlpy.svg?branch=master)](https://travis-ci.org/dleehr/cwlpy)
+
 Python library for working with CWL documents, backed by schema-salad codegen
 
 ## Contents
