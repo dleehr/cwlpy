@@ -64,6 +64,10 @@ class Workflow(cwl_schema.Workflow):
             raise ValidationException("Not a WorkflowStep")
         self.steps.append(step)
 
+    def step(self, step):
+        self.add_step(step)
+        return self
+
     def input_parameter_by_id(self, id):
         for param in self.inputs:
             if param.id == id:
@@ -74,17 +78,33 @@ class Workflow(cwl_schema.Workflow):
         if not isinstance(input_parameter, cwl_schema.InputParameter):
             raise ValidationException("Not an InputParameter")
         self.inputs.append(input_parameter)
+        return self
 
     def add_output_parameter(self, output_parameter):
         if not isinstance(output_parameter, cwl_schema.WorkflowOutputParameter):
             raise ValidationException("Not an WorkflowOutputParameter")
         self.outputs.append(output_parameter)
+        return self
+
+    def connect_input(self, step_or_steps, workflow_input_id=None, step_input_id=None):
+        if not isinstance(step_or_steps, list):
+            step_or_steps = [step_or_steps]
+        connection = WorkflowInputConnection(self, step_or_steps)
+
+
+    def connect_output(self, step):
+        return WorkflowOutputConnection(self, [step])
+
+    def connect_steps(self, output_step, input_step):
+        return WorkflowStepConnection(self, [output_step, input_step])
 
 
 class WorkflowStep(cwl_schema.WorkflowStep):
 
-    def __init__(self, id):
+    def __init__(self, id, run=None):
         super(WorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
+        if run:
+            self.set_run(run)
 
     def add_input(self, step_input):
         if not isinstance(step_input, cwl_schema.WorkflowStepInput):
@@ -153,7 +173,7 @@ class WorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
         self.outputSource = outputSource
 
 
-class WorkflowStepConnection(object):
+class WorkflowStepConnectionBase(object):
 
     # TODO: Verify input and output data types when connecting
     # It's possible (and likely) that "run" will be file name
@@ -171,6 +191,9 @@ class WorkflowStepConnection(object):
         self.workflow = workflow
         self.steps = steps
 
+
+class WorkflowInputConnection(WorkflowStepConnectionBase):
+
     def _connect_workflow_single_input(self, workflow_input_id, step_input_id, step):
         # If workflow has an input parameter, get it
         input_parameter = self.workflow.input_parameter_by_id(workflow_input_id)
@@ -183,7 +206,7 @@ class WorkflowStepConnection(object):
         # This verifies the step is not already connected
         step.add_input(workflow_step_input)
 
-    def connect_workflow_input(self, workflow_input_id, step_input_ids):
+    def connect(self, workflow_input_id, step_input_ids):
         """
         Connects a workflow input to step inputs
         """
@@ -194,6 +217,26 @@ class WorkflowStepConnection(object):
         for index, step in enumerate(self.steps):
             step_input_id = step_input_ids[index]
             self._connect_workflow_single_input(workflow_input_id, step_input_id, step)
+
+
+class WorkflowStepConnection(WorkflowStepConnectionBase):
+
+    def connect(self, step_output_id, step_input_id):
+        # Simple case, connecting 1:1 output->input
+        if not len(self.steps) == 2:
+            raise ValidationException("Can only connect with two steps")
+        output_step, input_step = self.steps
+        workflow_step_output = output_step.workflow_step_output_by_id(step_output_id)
+        if not workflow_step_output:
+            workflow_step_output = WorkflowStepOutput(step_output_id)
+            output_step.add_output(workflow_step_output)
+        workflow_step_input = WorkflowStepInput(step_input_id)
+        source = '{}/{}'.format(output_step.id, step_output_id)
+        workflow_step_input.set_source(source)
+        input_step.add_input(workflow_step_input)  # Should raise if already connected
+
+
+class WorkflowOutputConnection(WorkflowStepConnectionBase):
 
     def _connect_workflow_single_output(self, workflow_output_id, step_output_id, step):
         # If step has an output, get it
@@ -214,7 +257,7 @@ class WorkflowStepConnection(object):
             output_parameter.set_outputSource(output_source)
             self.workflow.add_output_parameter(output_parameter)
 
-    def connect_workflow_output(self, workflow_output_ids, step_output_id):
+    def connect(self, step_output_id, workflow_output_ids):
         """
         Connect's a workflow's output to a step's output
         """
@@ -224,17 +267,3 @@ class WorkflowStepConnection(object):
             raise ValidationException("Cannot connect multiple steps to a single workflow output")
         for workflow_output_id in workflow_output_ids:
             self._connect_workflow_single_output(workflow_output_id, step_output_id, self.steps[0])
-
-    def connect_step_output_input(self, step_output_id, step_input_id):
-        # Simple case, connecting 1:1 output->input
-        if not len(self.steps) == 2:
-            raise ValidationException("Can only connect with two steps")
-        output_step, input_step = self.steps
-        workflow_step_output = output_step.workflow_step_output_by_id(step_output_id)
-        if not workflow_step_output:
-            workflow_step_output = WorkflowStepOutput(step_output_id)
-            output_step.add_output(workflow_step_output)
-        workflow_step_input = WorkflowStepInput(step_input_id)
-        source = '{}/{}'.format(output_step.id, step_output_id)
-        workflow_step_input.set_source(source)
-        input_step.add_input(workflow_step_input)  # Should raise if already connected
