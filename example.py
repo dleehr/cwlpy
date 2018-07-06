@@ -1,22 +1,3 @@
-# cwlpy
-
-[![Build Status](https://travis-ci.org/dleehr/cwlpy.svg?branch=master)](https://travis-ci.org/dleehr/cwlpy)
-
-Python library for working with CWL documents, backed by schema-salad codegen.
-
-This is a work-in-progress.
-
-## Contents
-
-- **generate_cwl_schema.sh**: Script to generate python classes using schema-salad, from the CWL standard
-- **cwl_schema.py**: Auto-generated python classes from schema salad
-- **cwlpy**: Subclasses of auto-generated classes for building up CWL objects programatically
-- **example.py**: Example script using cwlpy to build a workflow and connect steps/inputs/outputs
-
-## Example Usage
-
-
-```
 from cwlpy import *
 from ruamel import yaml
 
@@ -50,4 +31,3 @@ WorkflowStepConnection(workflow, [rev_step, sort_step]).connect_step_output_inpu
 WorkflowStepConnection(workflow, [sort_step]).connect_workflow_output(['output'],'output')
 
 print(yaml.safe_dump(workflow.save(), default_flow_style=False))
-```
