@@ -201,24 +201,29 @@ class WorkflowStepConnection(object):
         if not workflow_step_output:
             workflow_step_output = WorkflowStepOutput(step_output_id)
             step.add_output(workflow_step_output)
-        # Instantiate a workflow output
-        output_parameter = WorkflowOutputParameter(workflow_output_id)
-        # Now connect them
-        output_source = '{}/{}'.format(step.id, step_output_id)
-        output_parameter.set_outputSource(output_source)
-        self.workflow.add_output_parameter(output_parameter)
+        # Check existing output parameters
+        output_parameters = [output for output in self.workflow.outputs if output.id == workflow_output_id]
+        for output_parameter in output_parameters:
+            if output_parameter.outputSource:
+                raise ValidationException('Output parameter exists and is already connected')
+        if not output_parameters:
+            output_parameters = [WorkflowOutputParameter(workflow_output_id)]
 
-    def connect_workflow_output(self, workflow_output_id, step_output_ids):
+        output_source = '{}/{}'.format(step.id, step_output_id)
+        for output_parameter in output_parameters:
+            output_parameter.set_outputSource(output_source)
+            self.workflow.add_output_parameter(output_parameter)
+
+    def connect_workflow_output(self, workflow_output_ids, step_output_id):
         """
         Connect's a workflow's output to a step's output
         """
-        # The step output may be connected more than once
-        # but the workflow output should only be connected once
-        if len(step_output_ids) != len(self.steps):
-            raise ValidationException("step_output_ids len does not match steps len")
-        for index, step in enumerate(self.steps):
-            step_output_id = step_output_ids[index]
-            self._connect_workflow_single_output(workflow_output_id, step_output_id, step)
+        # A step output may be connected to multiple workflow outputs
+        # But for now (until sink is implemented), mutliple steps may not be connected to a single workflow output
+        if len(self.steps) != 1:
+            raise ValidationException("Cannot connect multiple steps to a single workflow output")
+        for workflow_output_id in workflow_output_ids:
+            self._connect_workflow_single_output(workflow_output_id, step_output_id, self.steps[0])
 
     def connect_step_output_input(self, step_output_id, step_input_id):
         # Simple case, connecting 1:1 output->input

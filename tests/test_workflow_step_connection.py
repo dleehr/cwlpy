@@ -93,3 +93,49 @@ class WorkflowStepConnectionInputTestCase(WorkflowStepConnectionBase):
             connection.connect_workflow_input('workflow-input-3', ['step-input-1'])
         self.assertIn('Step already has input with id: step-input-1', repr(cm.exception))
 
+
+class WorkflowStepConnectionOutputTestCase(WorkflowStepConnectionBase):
+
+    def setUp(self):
+        super(WorkflowStepConnectionOutputTestCase, self).setUp()
+        # Just connecting the last step
+        self.connection = WorkflowStepConnection(self.workflow, self.steps[1:2])
+
+    def test_fails_when_connecting_output_to_multiple_steps(self):
+        self.assertEqual(len(self.steps), 2)
+        connection = WorkflowStepConnection(self.workflow, self.steps)
+        with self.assertRaises(ValidationException) as cm:
+            connection.connect_workflow_output(['w1'], 's1')
+        self.assertIn('Cannot connect multiple steps', repr(cm.exception))
+
+    def test_connects_workflow_outputs_to_step_output(self):
+        workflow_output_ids = ['workflow-output-1', 'workflow-output-2']
+        step_output_id = 'step-2-output-1'
+        self.connection.connect_workflow_output(workflow_output_ids, step_output_id)
+        # Step should have input connected to workflow
+        saved = self.workflow.save()
+        workflow_outputs = saved['outputs']
+        # We're connecting two workflow outputs to output-1 of step-2
+        self.assertEqual(workflow_outputs[0]['outputSource'], 'step-2/step-2-output-1')
+        self.assertEqual(workflow_outputs[0]['id'], 'workflow-output-1')
+        self.assertEqual(workflow_outputs[1]['outputSource'], 'step-2/step-2-output-1')
+        self.assertEqual(workflow_outputs[1]['id'], 'workflow-output-2')
+
+    def test_reuses_workflow_step_output_by_id(self):
+        # Connect 1 step's output to two workflow outputs
+        # Verify that two workflow outputs are created and the step only has one output
+        self.assertEqual(len(self.workflow.steps[1].out), 0)
+        self.assertEqual(len(self.workflow.outputs), 0)
+        step_output_id = 'step-2-output-1'
+        self.connection.connect_workflow_output(['workflow-output-1'], step_output_id)
+        self.connection.connect_workflow_output(['workflow-output-2'], step_output_id)
+        self.assertEqual(len(self.workflow.steps[1].out), 1)
+        self.assertEqual(len(self.workflow.outputs), 2)
+
+    def test_fails_if_workflow_output_already_connected(self):
+        workflow_output_ids = ['workflow-output-1']
+        # Connecting another step to the same workflow output should fail.
+        self.connection.connect_workflow_output(workflow_output_ids, 'step-2-output-1')
+        with self.assertRaises(ValidationException) as cm:
+            self.connection.connect_workflow_output(workflow_output_ids, 'step-2-output-2')
+        self.assertIn('Output parameter exists and is already connected', repr(cm.exception))
