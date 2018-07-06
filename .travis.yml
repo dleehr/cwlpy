@@ -5,7 +5,7 @@ python:
 - '3.5'
 - '3.6'
 install:
-- cd schema_salad && python setup.py install
+- pip install ./schema_salad
 - pip install nose
 script:
 - nosetests
