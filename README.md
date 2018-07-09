@@ -17,7 +17,7 @@ This is a work-in-progress.
 
 
 ```
-from cwlpy import *
+from cwlpy import Workflow, WorkflowStep as Step, WorkflowStepConnection as Connection
 from ruamel import yaml
 
 # https://github.com/common-workflow-language/cwl-v1.1/blob/master/tests/revsort.cwl
@@ -27,27 +27,24 @@ from ruamel import yaml
 ########################################
 
 workflow = Workflow('revsort')
-rev_step = WorkflowStep('rev')
-sort_step = WorkflowStep('sorted')
+rev_step = Step('rev', run='revtool.cwl')
+sort_step = Step('sorted', run='sorttool.cwl')
 
-rev_step.set_run('revtool.cwl')
-sort_step.set_run('sort.cwl')
-
-workflow.add_step(rev_step)
-workflow.add_step(sort_step)
+# Add steps by chaining
+workflow.step(rev_step).step(sort_step)
 
 ########################################
 # Connect workflow and steps
 ########################################
 
 # workflow.input -> rev_step.input
-WorkflowStepConnection(workflow, [rev_step]).connect_workflow_input('input', ['input'])
+workflow.connect_input(rev_step, 'input', 'input')
 # workflow.reverse_sort -> sort_step.output
-WorkflowStepConnection(workflow, [sort_step]).connect_workflow_input('reverse_sort', ['reverse'])
+workflow.connect_input(sort_step, 'reverse_sort', 'reverse')
 # rev_step.output -> sort_step.input
-WorkflowStepConnection(workflow, [rev_step, sort_step]).connect_step_output_input('output','input')
+workflow.connect_steps(rev_step, sort_step, 'output','input')
 # sort_step.output -> workflow.output
-WorkflowStepConnection(workflow, [sort_step]).connect_workflow_output(['output'],'output')
+workflow.connect_output(sort_step, 'output', 'output')
 
 print(yaml.safe_dump(workflow.save(), default_flow_style=False))
 ```
