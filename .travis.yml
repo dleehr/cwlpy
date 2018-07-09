@@ -8,4 +8,4 @@ install:
 - pip install ./schema_salad
 - pip install nose
 script:
-- nosetests
+- nosetests --with-coverage
