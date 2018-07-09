@@ -4,6 +4,9 @@ from .cwlpy import Workflow, \
   WorkflowStepOutput, \
   InputParameter, \
   WorkflowOutputParameter, \
+  WorkflowInputConnection, \
   WorkflowStepConnection, \
+  WorkflowOutputConnection, \
+  WorkflowStepConnectionBase, \
   ValidationException
 
