@@ -89,8 +89,7 @@ class Workflow(cwl_schema.Workflow):
     def connect_input(self, step_or_steps, workflow_input_id=None, step_input_id=None):
         if not isinstance(step_or_steps, list):
             step_or_steps = [step_or_steps]
-        connection = WorkflowInputConnection(self, step_or_steps)
-
+        return WorkflowInputConnection(self, step_or_steps)
 
     def connect_output(self, step):
         return WorkflowOutputConnection(self, [step])
