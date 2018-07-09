@@ -7,6 +7,5 @@ from .cwlpy import Workflow, \
   WorkflowInputConnection, \
   WorkflowStepConnection, \
   WorkflowOutputConnection, \
-  WorkflowStepConnectionBase, \
   ValidationException
 

@@ -1,21 +1,19 @@
 from unittest import TestCase
 
-from cwlpy import WorkflowStepConnectionBase, WorkflowInputConnection, WorkflowStepConnection, WorkflowOutputConnection, \
+from cwlpy import WorkflowInputConnection, WorkflowStepConnection, WorkflowOutputConnection, \
     ValidationException, Workflow, WorkflowStep
 
 
-class WorkflowStepConnectionTestBase(TestCase):
+class WorkflowStepConnectionCommonTests(object):
 
     def setUp(self):
+        self.test_cls = None
         self.workflow = Workflow('workflow-1')
         self.steps = [WorkflowStep('step-1'), WorkflowStep('step-2')]
         [self.workflow.add_step(step) for step in self.steps]
 
-
-class WorkflowStepConnectionBaseTestCase(WorkflowStepConnectionTestBase):
-
     def test_initializes_successfully(self):
-        connection = WorkflowStepConnectionBase(self.workflow, self.steps)
+        connection = self.test_cls(self.workflow, self.steps)
         self.assertIsNotNone(connection)
         self.assertEqual(connection.workflow, self.workflow)
         self.assertEqual(connection.steps, self.steps)
@@ -24,24 +22,25 @@ class WorkflowStepConnectionBaseTestCase(WorkflowStepConnectionTestBase):
         step = WorkflowStep('step-3')
         self.assertNotIn(step, self.workflow.steps)
         with self.assertRaises(ValidationException) as cm:
-            WorkflowStepConnectionBase(self.workflow, [step])
+            self.test_cls(self.workflow, [step])
         self.assertIn('not a part of workflow', repr(cm.exception))
 
     def test_fails_if_not_a_workflow(self):
         with self.assertRaises(ValidationException) as cm:
-            WorkflowStepConnectionBase({}, self.steps)
+            self.test_cls({}, self.steps)
         self.assertIn('not a Workflow', repr(cm.exception))
 
     def test_fails_if_steps_not_steps(self):
         with self.assertRaises(ValidationException) as cm:
-            WorkflowStepConnectionBase(self.workflow, [1, 2, 3])
+            self.test_cls(self.workflow, [1, 2, 3])
         self.assertIn('not a WorkflowStep', repr(cm.exception))
 
 
-class WorkflowInputConnectionTestCase(WorkflowStepConnectionTestBase):
+class WorkflowInputConnectionTestCase(WorkflowStepConnectionCommonTests, TestCase):
 
     def setUp(self):
         super(WorkflowInputConnectionTestCase, self).setUp()
+        self.test_cls = WorkflowInputConnection
         self.connection = WorkflowInputConnection(self.workflow, self.steps)
 
     def test_connects_workflow_input_to_step_inputs(self):
@@ -96,10 +95,11 @@ class WorkflowInputConnectionTestCase(WorkflowStepConnectionTestBase):
         self.assertIn('Step already has input with id: step-input-1', repr(cm.exception))
 
 
-class WorkflowOutputConnectionTestCase(WorkflowStepConnectionTestBase):
+class WorkflowOutputConnectionTestCase(WorkflowStepConnectionCommonTests, TestCase):
 
     def setUp(self):
         super(WorkflowOutputConnectionTestCase, self).setUp()
+        self.test_cls = WorkflowOutputConnection
         # Just connecting the last step
         self.connection = WorkflowOutputConnection(self.workflow, self.steps[1:2])
 
@@ -143,10 +143,11 @@ class WorkflowOutputConnectionTestCase(WorkflowStepConnectionTestBase):
         self.assertIn('Output parameter exists and is already connected', repr(cm.exception))
 
 
-class WorkflowStepConnectionTestCase(WorkflowStepConnectionTestBase):
+class WorkflowStepConnectionTestCase(WorkflowStepConnectionCommonTests, TestCase):
 
     def setUp(self):
         super(WorkflowStepConnectionTestCase, self).setUp()
+        self.test_cls = WorkflowStepConnection
         # Step output -> input connections require exactly two steps
         self.connection = WorkflowStepConnection(self.workflow, self.steps)
 
