@@ -86,20 +86,24 @@ class Workflow(cwl_schema.Workflow):
         self.outputs.append(output_parameter)
         return self
 
-    def connect_input(self, step_or_steps, workflow_input_id, step_input_id):
-        if not isinstance(step_or_steps, list):
-            step_or_steps = [step_or_steps]
-        connection = WorkflowInputConnection(self, step_or_steps)
+    def connect_input(self, step, workflow_input_id, step_input_id=None):
+        connection = WorkflowInputConnection(self, [step])
+        if step_input_id is None:
+            step_input_id = workflow_input_id
         connection.connect(workflow_input_id, [step_input_id])
         return self
 
-    def connect_output(self, step, step_output_id, workflow_output_id):
+    def connect_output(self, step, step_output_id, workflow_output_id=None):
         connection = WorkflowOutputConnection(self, [step])
+        if workflow_output_id is None:
+            workflow_output_id = step_output_id
         connection.connect(step_output_id, [workflow_output_id])
         return self
 
-    def connect_steps(self, output_step, input_step, step_output_id, step_input_id):
+    def connect_steps(self, output_step, input_step, step_output_id, step_input_id=None):
         connection = WorkflowStepConnection(self, [output_step, input_step])
+        if step_input_id is None:
+            step_input_id = step_output_id
         connection.connect(step_output_id, step_input_id)
         return self
 

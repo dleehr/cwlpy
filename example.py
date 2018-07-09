@@ -19,12 +19,12 @@ workflow.step(rev_step).step(sort_step)
 ########################################
 
 # workflow.input -> rev_step.input
-workflow.connect_input(rev_step, 'input', 'input')
+workflow.connect_input(rev_step, 'input')
 # workflow.reverse_sort -> sort_step.output
 workflow.connect_input(sort_step, 'reverse_sort', 'reverse')
 # rev_step.output -> sort_step.input
 workflow.connect_steps(rev_step, sort_step, 'output','input')
 # sort_step.output -> workflow.output
-workflow.connect_output(sort_step, 'output', 'output')
+workflow.connect_output(sort_step, 'output')
 
 print(yaml.safe_dump(workflow.save(), default_flow_style=False))
