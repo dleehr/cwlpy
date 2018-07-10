@@ -25,9 +25,11 @@ class WorkflowOutputParameterTestCase(TestCase):
         self.assertEqual(self.output_parameter.outputSource, source_list)
 
     def test_validates_output_source(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.output_parameter.set_outputSource({})
+        self.assertIn('outputSource must be', repr(cm.exception))
 
     def test_validates_output_source_list(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.output_parameter.set_outputSource([1,2,3])
+        self.assertIn('outputSource must be', repr(cm.exception))

@@ -6,6 +6,8 @@ python:
 - '3.6'
 install:
 - pip install ./schema_salad
-- pip install nose
+- pip install nose codecov coverage
 script:
-- nosetests
+- nosetests --with-coverage --cover-package=cwlpy
+after_success:
+- codecov

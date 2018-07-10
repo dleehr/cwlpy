@@ -17,8 +17,9 @@ class WorkflowTestCase(TestCase):
         self.assertEqual(saved['id'], 'my-workflow')
 
     def test_validates_add_step(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.workflow.add_step('not-a-workflowstep')
+        self.assertIn('Not a WorkflowStep', repr(cm.exception))
 
     def test_add_input_parameter(self):
         input_parameter = InputParameter('input-1')
@@ -26,8 +27,9 @@ class WorkflowTestCase(TestCase):
         self.assertIn(input_parameter, self.workflow.inputs)
 
     def test_validates_add_input_parameter_type(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.workflow.add_input_parameter('not-input-parameter')
+        self.assertIn('Not an InputParameter', repr(cm.exception))
 
     def test_finds_input_parameter_by_id(self):
         input_parameter = InputParameter('input-2')
@@ -41,8 +43,9 @@ class WorkflowTestCase(TestCase):
         self.assertIn(output_parameter, self.workflow.outputs)
 
     def test_validates_add_output_parameter(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.workflow.add_output_parameter('not-output-parameter')
+        self.assertIn('Not a WorkflowOutputParameter', repr(cm.exception))
 
 
 class WorkflowWithStepsTestCase(TestCase):

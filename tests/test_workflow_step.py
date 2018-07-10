@@ -21,13 +21,15 @@ class WorkflowStepTestCase(TestCase):
         self.assertIn(step_input, self.step.in_)
 
     def test_validates_add_input_type(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.step.add_input('a string')
+        self.assertIn('Not a WorkflowStepInput', repr(cm.exception))
 
     def test_validates_add_input_uniqueness(self):
         self.step.add_input(WorkflowStepInput('step-input-1'))
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.step.add_input(WorkflowStepInput('step-input-1'))
+        self.assertIn('Step already has input with id', repr(cm.exception))
 
     def test_add_output(self):
         step_output = WorkflowStepOutput('step-output-1')
@@ -35,13 +37,21 @@ class WorkflowStepTestCase(TestCase):
         self.assertIn(step_output, self.step.out)
 
     def test_validates_add_output_type(self):
-        with self.assertRaises(ValidationException):
-            self.step.add_input('a string')
+        with self.assertRaises(ValidationException) as cm:
+            self.step.add_output('a string')
+        self.assertIn('Not a WorkflowStepOutput', repr(cm.exception))
+
+    def test_validates_add_output_uniqueness(self):
+        self.step.add_output(WorkflowStepOutput('step-output-1'))
+        with self.assertRaises(ValidationException) as cm:
+            self.step.add_output(WorkflowStepOutput('step-output-1'))
+        self.assertIn('Step already has output with id', repr(cm.exception))
 
     def test_validates_set_run(self):
         # Must be one of six.string_types, CommandLineTool, ExpressionTool, Workflow]
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.step.set_run(1000)
+        self.assertIn('Not an allowed type', repr(cm.exception))
 
     def test_set_run(self):
         self.step.set_run('tool.cwl')
