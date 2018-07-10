@@ -82,7 +82,7 @@ class Workflow(cwl_schema.Workflow):
 
     def add_output_parameter(self, output_parameter):
         if not isinstance(output_parameter, cwl_schema.WorkflowOutputParameter):
-            raise ValidationException("Not an WorkflowOutputParameter")
+            raise ValidationException("Not a WorkflowOutputParameter")
         self.outputs.append(output_parameter)
         return self
 

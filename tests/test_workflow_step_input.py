@@ -25,9 +25,11 @@ class WorkflowStepInputTestCase(TestCase):
         self.assertEqual(self.step_input.source, source_list)
 
     def test_validates_source(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.step_input.set_source({})
+        self.assertIn('Source must be', repr(cm.exception))
 
     def test_validates_source_list(self):
-        with self.assertRaises(ValidationException):
+        with self.assertRaises(ValidationException) as cm:
             self.step_input.set_source([1,2,3])
+        self.assertIn('Source must be', repr(cm.exception))
