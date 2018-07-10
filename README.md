@@ -1,6 +1,7 @@
 # cwlpy
 
 [![Build Status](https://travis-ci.org/dleehr/cwlpy.svg?branch=master)](https://travis-ci.org/dleehr/cwlpy)
+[![codecov](https://codecov.io/gh/dleehr/cwlpy/branch/master/graph/badge.svg)](https://codecov.io/gh/dleehr/cwlpy)
 
 Python library for working with CWL documents, backed by schema-salad codegen.
 
@@ -44,8 +45,7 @@ workflow.connect_input(sort_step, 'reverse_sort', 'reverse')
 # rev_step.output -> sort_step.input
 workflow.connect_steps(rev_step, sort_step, 'output','input')
 # sort_step.output -> workflow.output
-# If source and dest IDs are the same, you can specify it once
-workflow.connect_output(sort_step, 'output')
+workflow.connect_output(sort_step, 'output', 'output')
 
 print(yaml.safe_dump(workflow.save(), default_flow_style=False))
 ```
