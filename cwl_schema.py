@@ -228,10 +228,10 @@ class LoadingOptions(object):
                 session = CacheControl(
                     requests.Session(),
                     cache=FileCache(os.path.join(os.environ["HOME"], ".cache", "salad")))
-            elif "TMP" in os.environ:
+            elif "TMPDIR" in os.environ:
                 session = CacheControl(
                     requests.Session(),
-                    cache=FileCache(os.path.join(os.environ["TMP"], ".cache", "salad")))
+                    cache=FileCache(os.path.join(os.environ["TMPDIR"], ".cache", "salad")))
             else:
                 session = CacheControl(
                     requests.Session(),
@@ -265,11 +265,11 @@ def load_field(val, fieldtype, baseuri, loadingOptions):
     return fieldtype.load(val, baseuri, loadingOptions)
 
 
-def save(val, top=True):
+def save(val, top=True, base_url=""):
     if isinstance(val, Savable):
-        return val.save(top=top)
+        return val.save(top=top, base_url=base_url)
     if isinstance(val, list):
-        return [save(v, top=False) for v in val]
+        return [save(v, top=False, base_url=base_url) for v in val]
     return val
 
 def expand_url(url,                 # type: Union[str, Text]
@@ -593,6 +593,36 @@ def prefix_url(url, namespaces):
             return k+":"+url[len(v):]
     return url
 
+def save_relative_uri(uri, base_url, scoped_id, ref_scope):
+    if isinstance(uri, list):
+        return [save_relative_uri(u, base_url, scoped_id, ref_scope) for u in uri]
+    elif isinstance(uri, str):
+        urisplit = urllib.parse.urlsplit(uri)
+        basesplit = urllib.parse.urlsplit(base_url)
+        if urisplit.scheme == basesplit.scheme and urisplit.netloc == basesplit.netloc:
+            if urisplit.path != basesplit.path:
+                p = os.path.relpath(urisplit.path, os.path.dirname(basesplit.path))
+                if urisplit.fragment:
+                    p = p + "#" + urisplit.fragment
+                return p
+
+            basefrag = basesplit.fragment+"/"
+            if ref_scope:
+                sp = basefrag.split("/")
+                i = 0
+                while i < ref_scope:
+                    sp.pop()
+                    i += 1
+                basefrag = "/".join(sp)
+
+            if urisplit.fragment.startswith(basefrag):
+                return urisplit.fragment[len(basefrag):]
+            else:
+                return urisplit.fragment
+        return uri
+    else:
+        return save(uri, top=False, base_url=base_url)
+
 
 class RecordField(Savable):
     """
@@ -647,19 +677,21 @@ A field of a record.
         if errors:
             raise ValidationException("Trying 'RecordField'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -704,16 +736,16 @@ class RecordSchema(Savable):
         if errors:
             raise ValidationException("Trying 'RecordSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.fields is not None:
-            r['fields'] = save(self.fields, top=False)
+            r['fields'] = save(self.fields, top=False, base_url=base_url)
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -759,16 +791,18 @@ Define an enumerated type.
         if errors:
             raise ValidationException("Trying 'EnumSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.symbols is not None:
-            r['symbols'] = save(self.symbols, top=False)
+            u = save_relative_uri(self.symbols, base_url, True, None)
+            if u:
+                r['symbols'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -810,16 +844,18 @@ class ArraySchema(Savable):
         if errors:
             raise ValidationException("Trying 'ArraySchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.items is not None:
-            r['items'] = save(self.items, top=False)
+            u = save_relative_uri(self.items, base_url, False, 2)
+            if u:
+                r['items'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1012,7 +1048,7 @@ the same value for `location`.
         if errors:
             raise ValidationException("Trying 'File'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -1020,37 +1056,43 @@ the same value for `location`.
         r['class'] = 'File'
 
         if self.location is not None:
-            r['location'] = save(self.location, top=False)
+            u = save_relative_uri(self.location, base_url, False, None)
+            if u:
+                r['location'] = u
 
         if self.path is not None:
-            r['path'] = save(self.path, top=False)
+            u = save_relative_uri(self.path, base_url, False, None)
+            if u:
+                r['path'] = u
 
         if self.basename is not None:
-            r['basename'] = save(self.basename, top=False)
+            r['basename'] = save(self.basename, top=False, base_url=base_url)
 
         if self.dirname is not None:
-            r['dirname'] = save(self.dirname, top=False)
+            r['dirname'] = save(self.dirname, top=False, base_url=base_url)
 
         if self.nameroot is not None:
-            r['nameroot'] = save(self.nameroot, top=False)
+            r['nameroot'] = save(self.nameroot, top=False, base_url=base_url)
 
         if self.nameext is not None:
-            r['nameext'] = save(self.nameext, top=False)
+            r['nameext'] = save(self.nameext, top=False, base_url=base_url)
 
         if self.checksum is not None:
-            r['checksum'] = save(self.checksum, top=False)
+            r['checksum'] = save(self.checksum, top=False, base_url=base_url)
 
         if self.size is not None:
-            r['size'] = save(self.size, top=False)
+            r['size'] = save(self.size, top=False, base_url=base_url)
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=base_url)
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, base_url, True, None)
+            if u:
+                r['format'] = u
 
         if self.contents is not None:
-            r['contents'] = save(self.contents, top=False)
+            r['contents'] = save(self.contents, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1164,7 +1206,7 @@ or in any entry in `secondaryFiles` in the listing) is a fatal error.
         if errors:
             raise ValidationException("Trying 'Directory'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -1172,16 +1214,20 @@ or in any entry in `secondaryFiles` in the listing) is a fatal error.
         r['class'] = 'Directory'
 
         if self.location is not None:
-            r['location'] = save(self.location, top=False)
+            u = save_relative_uri(self.location, base_url, False, None)
+            if u:
+                r['location'] = u
 
         if self.path is not None:
-            r['path'] = save(self.path, top=False)
+            u = save_relative_uri(self.path, base_url, False, None)
+            if u:
+                r['path'] = u
 
         if self.basename is not None:
-            r['basename'] = save(self.basename, top=False)
+            r['basename'] = save(self.basename, top=False, base_url=base_url)
 
         if self.listing is not None:
-            r['listing'] = save(self.listing, top=False)
+            r['listing'] = save(self.listing, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1279,25 +1325,27 @@ class InputRecordField(RecordField):
         if errors:
             raise ValidationException("Trying 'InputRecordField'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1365,22 +1413,24 @@ class InputRecordSchema(RecordSchema, InputSchema):
         if errors:
             raise ValidationException("Trying 'InputRecordSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.fields is not None:
-            r['fields'] = save(self.fields, top=False)
+            r['fields'] = save(self.fields, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1453,25 +1503,29 @@ class InputEnumSchema(EnumSchema, InputSchema):
         if errors:
             raise ValidationException("Trying 'InputEnumSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.symbols is not None:
-            r['symbols'] = save(self.symbols, top=False)
+            u = save_relative_uri(self.symbols, self.name , True, None)
+            if u:
+                r['symbols'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1529,22 +1583,24 @@ class InputArraySchema(ArraySchema, InputSchema):
         if errors:
             raise ValidationException("Trying 'InputArraySchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.items is not None:
-            r['items'] = save(self.items, top=False)
+            u = save_relative_uri(self.items, base_url, False, 2)
+            if u:
+                r['items'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1612,22 +1668,24 @@ class OutputRecordField(RecordField):
         if errors:
             raise ValidationException("Trying 'OutputRecordField'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1680,19 +1738,19 @@ class OutputRecordSchema(RecordSchema, OutputSchema):
         if errors:
             raise ValidationException("Trying 'OutputRecordSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.fields is not None:
-            r['fields'] = save(self.fields, top=False)
+            r['fields'] = save(self.fields, top=False, base_url=base_url)
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1750,22 +1808,24 @@ class OutputEnumSchema(EnumSchema, OutputSchema):
         if errors:
             raise ValidationException("Trying 'OutputEnumSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.symbols is not None:
-            r['symbols'] = save(self.symbols, top=False)
+            u = save_relative_uri(self.symbols, base_url, True, None)
+            if u:
+                r['symbols'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1823,22 +1883,24 @@ class OutputArraySchema(ArraySchema, OutputSchema):
         if errors:
             raise ValidationException("Trying 'OutputArraySchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.items is not None:
-            r['items'] = save(self.items, top=False)
+            u = save_relative_uri(self.items, base_url, False, 2)
+            if u:
+                r['items'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -1949,37 +2011,41 @@ class InputParameter(Parameter):
         if errors:
             raise ValidationException("Trying 'InputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.id )
 
         if self.default is not None:
-            r['default'] = save(self.default, top=False)
+            r['default'] = save(self.default, top=False, base_url=self.id )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2074,31 +2140,35 @@ class OutputParameter(Parameter):
         if errors:
             raise ValidationException("Trying 'OutputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2170,7 +2240,7 @@ interpolatation.
         if errors:
             raise ValidationException("Trying 'InlineJavascriptRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -2178,7 +2248,7 @@ interpolatation.
         r['class'] = 'InlineJavascriptRequirement'
 
         if self.expressionLib is not None:
-            r['expressionLib'] = save(self.expressionLib, top=False)
+            r['expressionLib'] = save(self.expressionLib, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2229,7 +2299,7 @@ to earlier schema definitions.
         if errors:
             raise ValidationException("Trying 'SchemaDefRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -2237,7 +2307,7 @@ to earlier schema definitions.
         r['class'] = 'SchemaDefRequirement'
 
         if self.types is not None:
-            r['types'] = save(self.types, top=False)
+            r['types'] = save(self.types, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2285,16 +2355,16 @@ result of executing an expression, such as getting a parameter from input.
         if errors:
             raise ValidationException("Trying 'EnvironmentDef'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.envName is not None:
-            r['envName'] = save(self.envName, top=False)
+            r['envName'] = save(self.envName, top=False, base_url=base_url)
 
         if self.envValue is not None:
-            r['envValue'] = save(self.envValue, top=False)
+            r['envValue'] = save(self.envValue, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2416,31 +2486,31 @@ effective value.
         if errors:
             raise ValidationException("Trying 'CommandLineBinding'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.loadContents is not None:
-            r['loadContents'] = save(self.loadContents, top=False)
+            r['loadContents'] = save(self.loadContents, top=False, base_url=base_url)
 
         if self.position is not None:
-            r['position'] = save(self.position, top=False)
+            r['position'] = save(self.position, top=False, base_url=base_url)
 
         if self.prefix is not None:
-            r['prefix'] = save(self.prefix, top=False)
+            r['prefix'] = save(self.prefix, top=False, base_url=base_url)
 
         if self.separate is not None:
-            r['separate'] = save(self.separate, top=False)
+            r['separate'] = save(self.separate, top=False, base_url=base_url)
 
         if self.itemSeparator is not None:
-            r['itemSeparator'] = save(self.itemSeparator, top=False)
+            r['itemSeparator'] = save(self.itemSeparator, top=False, base_url=base_url)
 
         if self.valueFrom is not None:
-            r['valueFrom'] = save(self.valueFrom, top=False)
+            r['valueFrom'] = save(self.valueFrom, top=False, base_url=base_url)
 
         if self.shellQuote is not None:
-            r['shellQuote'] = save(self.shellQuote, top=False)
+            r['shellQuote'] = save(self.shellQuote, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2509,19 +2579,19 @@ following order:
         if errors:
             raise ValidationException("Trying 'CommandOutputBinding'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.glob is not None:
-            r['glob'] = save(self.glob, top=False)
+            r['glob'] = save(self.glob, top=False, base_url=base_url)
 
         if self.loadContents is not None:
-            r['loadContents'] = save(self.loadContents, top=False)
+            r['loadContents'] = save(self.loadContents, top=False, base_url=base_url)
 
         if self.outputEval is not None:
-            r['outputEval'] = save(self.outputEval, top=False)
+            r['outputEval'] = save(self.outputEval, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2597,25 +2667,27 @@ class CommandInputRecordField(InputRecordField):
         if errors:
             raise ValidationException("Trying 'CommandInputRecordField'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2683,22 +2755,24 @@ class CommandInputRecordSchema(InputRecordSchema):
         if errors:
             raise ValidationException("Trying 'CommandInputRecordSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.fields is not None:
-            r['fields'] = save(self.fields, top=False)
+            r['fields'] = save(self.fields, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2771,25 +2845,29 @@ class CommandInputEnumSchema(InputEnumSchema):
         if errors:
             raise ValidationException("Trying 'CommandInputEnumSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.symbols is not None:
-            r['symbols'] = save(self.symbols, top=False)
+            u = save_relative_uri(self.symbols, self.name , True, None)
+            if u:
+                r['symbols'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2847,22 +2925,24 @@ class CommandInputArraySchema(InputArraySchema):
         if errors:
             raise ValidationException("Trying 'CommandInputArraySchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.items is not None:
-            r['items'] = save(self.items, top=False)
+            u = save_relative_uri(self.items, base_url, False, 2)
+            if u:
+                r['items'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -2930,22 +3010,24 @@ class CommandOutputRecordField(OutputRecordField):
         if errors:
             raise ValidationException("Trying 'CommandOutputRecordField'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3013,22 +3095,24 @@ class CommandOutputRecordSchema(OutputRecordSchema):
         if errors:
             raise ValidationException("Trying 'CommandOutputRecordSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.name is not None:
-            r['name'] = save(self.name, top=False)
+            u = save_relative_uri(self.name, base_url, True, None)
+            if u:
+                r['name'] = u
 
         if self.fields is not None:
-            r['fields'] = save(self.fields, top=False)
+            r['fields'] = save(self.fields, top=False, base_url=self.name )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.name )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.name )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3086,22 +3170,24 @@ class CommandOutputEnumSchema(OutputEnumSchema):
         if errors:
             raise ValidationException("Trying 'CommandOutputEnumSchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.symbols is not None:
-            r['symbols'] = save(self.symbols, top=False)
+            u = save_relative_uri(self.symbols, base_url, True, None)
+            if u:
+                r['symbols'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3159,22 +3245,24 @@ class CommandOutputArraySchema(OutputArraySchema):
         if errors:
             raise ValidationException("Trying 'CommandOutputArraySchema'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.items is not None:
-            r['items'] = save(self.items, top=False)
+            u = save_relative_uri(self.items, base_url, False, 2)
+            if u:
+                r['items'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=base_url)
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=base_url)
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3288,37 +3376,41 @@ An input parameter for a CommandLineTool.
         if errors:
             raise ValidationException("Trying 'CommandInputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if self.inputBinding is not None:
-            r['inputBinding'] = save(self.inputBinding, top=False)
+            r['inputBinding'] = save(self.inputBinding, top=False, base_url=self.id )
 
         if self.default is not None:
-            r['default'] = save(self.default, top=False)
+            r['default'] = save(self.default, top=False, base_url=self.id )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3424,34 +3516,38 @@ An output parameter for a CommandLineTool.
         if errors:
             raise ValidationException("Trying 'CommandOutputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3620,7 +3716,7 @@ This defines the schema of the CWL Command Line Tool Description document.
         if errors:
             raise ValidationException("Trying 'CommandLineTool'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -3628,52 +3724,56 @@ This defines the schema of the CWL Command Line Tool Description document.
         r['class'] = 'CommandLineTool'
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.inputs is not None:
-            r['inputs'] = save(self.inputs, top=False)
+            r['inputs'] = save(self.inputs, top=False, base_url=self.id )
 
         if self.outputs is not None:
-            r['outputs'] = save(self.outputs, top=False)
+            r['outputs'] = save(self.outputs, top=False, base_url=self.id )
 
         if self.requirements is not None:
-            r['requirements'] = save(self.requirements, top=False)
+            r['requirements'] = save(self.requirements, top=False, base_url=self.id )
 
         if self.hints is not None:
-            r['hints'] = save(self.hints, top=False)
+            r['hints'] = save(self.hints, top=False, base_url=self.id )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.cwlVersion is not None:
-            r['cwlVersion'] = save(self.cwlVersion, top=False)
+            u = save_relative_uri(self.cwlVersion, self.id , False, None)
+            if u:
+                r['cwlVersion'] = u
 
         if self.baseCommand is not None:
-            r['baseCommand'] = save(self.baseCommand, top=False)
+            r['baseCommand'] = save(self.baseCommand, top=False, base_url=self.id )
 
         if self.arguments is not None:
-            r['arguments'] = save(self.arguments, top=False)
+            r['arguments'] = save(self.arguments, top=False, base_url=self.id )
 
         if self.stdin is not None:
-            r['stdin'] = save(self.stdin, top=False)
+            r['stdin'] = save(self.stdin, top=False, base_url=self.id )
 
         if self.stderr is not None:
-            r['stderr'] = save(self.stderr, top=False)
+            r['stderr'] = save(self.stderr, top=False, base_url=self.id )
 
         if self.stdout is not None:
-            r['stdout'] = save(self.stdout, top=False)
+            r['stdout'] = save(self.stdout, top=False, base_url=self.id )
 
         if self.successCodes is not None:
-            r['successCodes'] = save(self.successCodes, top=False)
+            r['successCodes'] = save(self.successCodes, top=False, base_url=self.id )
 
         if self.temporaryFailCodes is not None:
-            r['temporaryFailCodes'] = save(self.temporaryFailCodes, top=False)
+            r['temporaryFailCodes'] = save(self.temporaryFailCodes, top=False, base_url=self.id )
 
         if self.permanentFailCodes is not None:
-            r['permanentFailCodes'] = save(self.permanentFailCodes, top=False)
+            r['permanentFailCodes'] = save(self.permanentFailCodes, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3791,7 +3891,7 @@ environment as defined by Docker.
         if errors:
             raise ValidationException("Trying 'DockerRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -3799,22 +3899,22 @@ environment as defined by Docker.
         r['class'] = 'DockerRequirement'
 
         if self.dockerPull is not None:
-            r['dockerPull'] = save(self.dockerPull, top=False)
+            r['dockerPull'] = save(self.dockerPull, top=False, base_url=base_url)
 
         if self.dockerLoad is not None:
-            r['dockerLoad'] = save(self.dockerLoad, top=False)
+            r['dockerLoad'] = save(self.dockerLoad, top=False, base_url=base_url)
 
         if self.dockerFile is not None:
-            r['dockerFile'] = save(self.dockerFile, top=False)
+            r['dockerFile'] = save(self.dockerFile, top=False, base_url=base_url)
 
         if self.dockerImport is not None:
-            r['dockerImport'] = save(self.dockerImport, top=False)
+            r['dockerImport'] = save(self.dockerImport, top=False, base_url=base_url)
 
         if self.dockerImageId is not None:
-            r['dockerImageId'] = save(self.dockerImageId, top=False)
+            r['dockerImageId'] = save(self.dockerImageId, top=False, base_url=base_url)
 
         if self.dockerOutputDirectory is not None:
-            r['dockerOutputDirectory'] = save(self.dockerOutputDirectory, top=False)
+            r['dockerOutputDirectory'] = save(self.dockerOutputDirectory, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3860,7 +3960,7 @@ the defined process.
         if errors:
             raise ValidationException("Trying 'SoftwareRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -3868,7 +3968,7 @@ the defined process.
         r['class'] = 'SoftwareRequirement'
 
         if self.packages is not None:
-            r['packages'] = save(self.packages, top=False)
+            r['packages'] = save(self.packages, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3921,19 +4021,19 @@ class SoftwarePackage(Savable):
         if errors:
             raise ValidationException("Trying 'SoftwarePackage'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.package is not None:
-            r['package'] = save(self.package, top=False)
+            r['package'] = save(self.package, top=False, base_url=base_url)
 
         if self.version is not None:
-            r['version'] = save(self.version, top=False)
+            r['version'] = save(self.version, top=False, base_url=base_url)
 
         if self.specs is not None:
-            r['specs'] = save(self.specs, top=False)
+            r['specs'] = save(self.specs, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -3993,19 +4093,19 @@ template.
         if errors:
             raise ValidationException("Trying 'Dirent'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.entryname is not None:
-            r['entryname'] = save(self.entryname, top=False)
+            r['entryname'] = save(self.entryname, top=False, base_url=base_url)
 
         if self.entry is not None:
-            r['entry'] = save(self.entry, top=False)
+            r['entry'] = save(self.entry, top=False, base_url=base_url)
 
         if self.writable is not None:
-            r['writable'] = save(self.writable, top=False)
+            r['writable'] = save(self.writable, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4049,7 +4149,7 @@ Define a list of files and subdirectories that must be created by the workflow p
         if errors:
             raise ValidationException("Trying 'InitialWorkDirRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -4057,7 +4157,7 @@ Define a list of files and subdirectories that must be created by the workflow p
         r['class'] = 'InitialWorkDirRequirement'
 
         if self.listing is not None:
-            r['listing'] = save(self.listing, top=False)
+            r['listing'] = save(self.listing, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4103,7 +4203,7 @@ execution environment of the tool.  See `EnvironmentDef` for details.
         if errors:
             raise ValidationException("Trying 'EnvVarRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -4111,7 +4211,7 @@ execution environment of the tool.  See `EnvironmentDef` for details.
         r['class'] = 'EnvVarRequirement'
 
         if self.envDef is not None:
-            r['envDef'] = save(self.envDef, top=False)
+            r['envDef'] = save(self.envDef, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4157,7 +4257,7 @@ the use of shell metacharacters such as `|` for pipes.
         if errors:
             raise ValidationException("Trying 'ShellCommandRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -4285,7 +4385,7 @@ If neither "min" nor "max" is specified for a resource, an implementation may pr
         if errors:
             raise ValidationException("Trying 'ResourceRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -4293,28 +4393,28 @@ If neither "min" nor "max" is specified for a resource, an implementation may pr
         r['class'] = 'ResourceRequirement'
 
         if self.coresMin is not None:
-            r['coresMin'] = save(self.coresMin, top=False)
+            r['coresMin'] = save(self.coresMin, top=False, base_url=base_url)
 
         if self.coresMax is not None:
-            r['coresMax'] = save(self.coresMax, top=False)
+            r['coresMax'] = save(self.coresMax, top=False, base_url=base_url)
 
         if self.ramMin is not None:
-            r['ramMin'] = save(self.ramMin, top=False)
+            r['ramMin'] = save(self.ramMin, top=False, base_url=base_url)
 
         if self.ramMax is not None:
-            r['ramMax'] = save(self.ramMax, top=False)
+            r['ramMax'] = save(self.ramMax, top=False, base_url=base_url)
 
         if self.tmpdirMin is not None:
-            r['tmpdirMin'] = save(self.tmpdirMin, top=False)
+            r['tmpdirMin'] = save(self.tmpdirMin, top=False, base_url=base_url)
 
         if self.tmpdirMax is not None:
-            r['tmpdirMax'] = save(self.tmpdirMax, top=False)
+            r['tmpdirMax'] = save(self.tmpdirMax, top=False, base_url=base_url)
 
         if self.outdirMin is not None:
-            r['outdirMin'] = save(self.outdirMin, top=False)
+            r['outdirMin'] = save(self.outdirMin, top=False, base_url=base_url)
 
         if self.outdirMax is not None:
-            r['outdirMax'] = save(self.outdirMax, top=False)
+            r['outdirMax'] = save(self.outdirMax, top=False, base_url=base_url)
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4417,34 +4517,38 @@ class ExpressionToolOutputParameter(OutputParameter):
         if errors:
             raise ValidationException("Trying 'ExpressionToolOutputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4554,7 +4658,7 @@ Execute an expression as a Workflow step.
         if errors:
             raise ValidationException("Trying 'ExpressionTool'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -4562,31 +4666,35 @@ Execute an expression as a Workflow step.
         r['class'] = 'ExpressionTool'
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.inputs is not None:
-            r['inputs'] = save(self.inputs, top=False)
+            r['inputs'] = save(self.inputs, top=False, base_url=self.id )
 
         if self.outputs is not None:
-            r['outputs'] = save(self.outputs, top=False)
+            r['outputs'] = save(self.outputs, top=False, base_url=self.id )
 
         if self.requirements is not None:
-            r['requirements'] = save(self.requirements, top=False)
+            r['requirements'] = save(self.requirements, top=False, base_url=self.id )
 
         if self.hints is not None:
-            r['hints'] = save(self.hints, top=False)
+            r['hints'] = save(self.hints, top=False, base_url=self.id )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.cwlVersion is not None:
-            r['cwlVersion'] = save(self.cwlVersion, top=False)
+            u = save_relative_uri(self.cwlVersion, self.id , False, None)
+            if u:
+                r['cwlVersion'] = u
 
         if self.expression is not None:
-            r['expression'] = save(self.expression, top=False)
+            r['expression'] = save(self.expression, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4711,40 +4819,46 @@ provide the value of the output parameter.
         if errors:
             raise ValidationException("Trying 'WorkflowOutputParameter'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.secondaryFiles is not None:
-            r['secondaryFiles'] = save(self.secondaryFiles, top=False)
+            r['secondaryFiles'] = save(self.secondaryFiles, top=False, base_url=self.id )
 
         if self.streamable is not None:
-            r['streamable'] = save(self.streamable, top=False)
+            r['streamable'] = save(self.streamable, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.outputBinding is not None:
-            r['outputBinding'] = save(self.outputBinding, top=False)
+            r['outputBinding'] = save(self.outputBinding, top=False, base_url=self.id )
 
         if self.format is not None:
-            r['format'] = save(self.format, top=False)
+            u = save_relative_uri(self.format, self.id , True, None)
+            if u:
+                r['format'] = u
 
         if self.outputSource is not None:
-            r['outputSource'] = save(self.outputSource, top=False)
+            u = save_relative_uri(self.outputSource, self.id , False, 0)
+            if u:
+                r['outputSource'] = u
 
         if self.linkMerge is not None:
-            r['linkMerge'] = save(self.linkMerge, top=False)
+            r['linkMerge'] = save(self.linkMerge, top=False, base_url=self.id )
 
         if self.type is not None:
-            r['type'] = save(self.type, top=False)
+            r['type'] = save(self.type, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4868,25 +4982,29 @@ specified, the default method is "merge_nested".
         if errors:
             raise ValidationException("Trying 'WorkflowStepInput'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.source is not None:
-            r['source'] = save(self.source, top=False)
+            u = save_relative_uri(self.source, self.id , False, 2)
+            if u:
+                r['source'] = u
 
         if self.linkMerge is not None:
-            r['linkMerge'] = save(self.linkMerge, top=False)
+            r['linkMerge'] = save(self.linkMerge, top=False, base_url=self.id )
 
         if self.default is not None:
-            r['default'] = save(self.default, top=False)
+            r['default'] = save(self.default, top=False, base_url=self.id )
 
         if self.valueFrom is not None:
-            r['valueFrom'] = save(self.valueFrom, top=False)
+            r['valueFrom'] = save(self.valueFrom, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -4940,13 +5058,15 @@ with an output parameter of the process.
         if errors:
             raise ValidationException("Trying 'WorkflowStepOutput'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -5114,40 +5234,50 @@ a subworkflow (recursive workflows are not allowed).
         if errors:
             raise ValidationException("Trying 'WorkflowStep'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.in_ is not None:
-            r['in'] = save(self.in_, top=False)
+            r['in'] = save(self.in_, top=False, base_url=self.id )
 
         if self.out is not None:
-            r['out'] = save(self.out, top=False)
+            u = save_relative_uri(self.out, self.id , True, None)
+            if u:
+                r['out'] = u
 
         if self.requirements is not None:
-            r['requirements'] = save(self.requirements, top=False)
+            r['requirements'] = save(self.requirements, top=False, base_url=self.id )
 
         if self.hints is not None:
-            r['hints'] = save(self.hints, top=False)
+            r['hints'] = save(self.hints, top=False, base_url=self.id )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.run is not None:
-            r['run'] = save(self.run, top=False)
+            u = save_relative_uri(self.run, self.id , False, None)
+            if u:
+                r['run'] = u
 
         if self.scatter is not None:
-            r['scatter'] = save(self.scatter, top=False)
+            u = save_relative_uri(self.scatter, self.id , False, 0)
+            if u:
+                r['scatter'] = u
 
         if self.scatterMethod is not None:
-            r['scatterMethod'] = save(self.scatterMethod, top=False)
+            u = save_relative_uri(self.scatterMethod, self.id , False, None)
+            if u:
+                r['scatterMethod'] = u
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -5301,7 +5431,7 @@ workflow semantics.
         if errors:
             raise ValidationException("Trying 'Workflow'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -5309,31 +5439,35 @@ workflow semantics.
         r['class'] = 'Workflow'
 
         if self.id is not None:
-            r['id'] = save(self.id, top=False)
+            u = save_relative_uri(self.id, base_url, True, None)
+            if u:
+                r['id'] = u
 
         if self.inputs is not None:
-            r['inputs'] = save(self.inputs, top=False)
+            r['inputs'] = save(self.inputs, top=False, base_url=self.id )
 
         if self.outputs is not None:
-            r['outputs'] = save(self.outputs, top=False)
+            r['outputs'] = save(self.outputs, top=False, base_url=self.id )
 
         if self.requirements is not None:
-            r['requirements'] = save(self.requirements, top=False)
+            r['requirements'] = save(self.requirements, top=False, base_url=self.id )
 
         if self.hints is not None:
-            r['hints'] = save(self.hints, top=False)
+            r['hints'] = save(self.hints, top=False, base_url=self.id )
 
         if self.label is not None:
-            r['label'] = save(self.label, top=False)
+            r['label'] = save(self.label, top=False, base_url=self.id )
 
         if self.doc is not None:
-            r['doc'] = save(self.doc, top=False)
+            r['doc'] = save(self.doc, top=False, base_url=self.id )
 
         if self.cwlVersion is not None:
-            r['cwlVersion'] = save(self.cwlVersion, top=False)
+            u = save_relative_uri(self.cwlVersion, self.id , False, None)
+            if u:
+                r['cwlVersion'] = u
 
         if self.steps is not None:
-            r['steps'] = save(self.steps, top=False)
+            r['steps'] = save(self.steps, top=False, base_url=self.id )
 
         if top and self.loadingOptions.namespaces:
             r["$namespaces"] = self.loadingOptions.namespaces
@@ -5374,7 +5508,7 @@ the `run` field of [WorkflowStep](#WorkflowStep).
         if errors:
             raise ValidationException("Trying 'SubworkflowFeatureRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -5420,7 +5554,7 @@ Indicates that the workflow platform must support the `scatter` and
         if errors:
             raise ValidationException("Trying 'ScatterFeatureRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -5466,7 +5600,7 @@ listed in the `source` field of [WorkflowStepInput](#WorkflowStepInput).
         if errors:
             raise ValidationException("Trying 'MultipleInputFeatureRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
@@ -5512,7 +5646,7 @@ of [WorkflowStepInput](#WorkflowStepInput).
         if errors:
             raise ValidationException("Trying 'StepInputExpressionRequirement'\n"+"\n".join(errors))
 
-    def save(self, top=False):
+    def save(self, top=False, base_url=""):
         r = {}
         for ef in self.extension_fields:
             r[prefix_url(ef, self.loadingOptions.vocab)] = self.extension_fields[ef]
