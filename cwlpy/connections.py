@@ -1,7 +1,7 @@
 import cwl_schema
-from cwlpy.exceptions import ValidationException
-from cwlpy.parameters import InputParameter, WorkflowOutputParameter
-from cwlpy.step import WorkflowStepInput, WorkflowStepOutput
+from .exceptions import ValidationException
+from .parameters import InputParameter, WorkflowOutputParameter
+from .step import WorkflowStepInput, WorkflowStepOutput
 
 
 class WorkflowStepConnectionBase(object):
