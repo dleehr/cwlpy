@@ -1,4 +1,4 @@
-from .cwlpy import Workflow, \
+from .common import Workflow, \
   WorkflowStep, \
   WorkflowStepInput, \
   WorkflowStepOutput, \

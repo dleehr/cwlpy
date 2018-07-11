@@ -3,8 +3,8 @@ import six
 import cwl_schema
 import inspect
 from cwl_schema import load_document, ValidationException
+from cwlpy.templates import TemplateDocs
 
-CWL_VERSION_STRING = 'v1.0'
 LOADING_OPTIONS = cwl_schema.LoadingOptions()
 BASE_URI = cwl_schema.file_uri(os.getcwd())
 
@@ -26,38 +26,6 @@ def add_methods(source_cls, dest_cls):
         setattr(dest_cls, m[0], m[1])
 
 
-class TemplateDocs(object):
-    # These should probably be factories
-    Workflow = {
-        'class': 'Workflow',
-        'cwlVersion': CWL_VERSION_STRING,
-        'inputs': [],
-        'outputs': [],
-        'steps': [],
-    }
-
-    WorkflowStep = {
-        'id': '',
-        'in': [],
-        'out': [],
-        'run': '',
-    }
-
-    WorkflowStepInput = {
-        'id': '',
-    }
-
-    WorkflowStepOutput = {
-        'id': '',
-    }
-
-    InputParameter = {
-        'id': '',
-    }
-
-    WorkflowOutputParameter = {
-        'id': '',
-    }
 
 
 class _Workflow(object):
