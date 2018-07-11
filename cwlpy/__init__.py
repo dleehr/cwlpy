@@ -7,5 +7,6 @@ from .cwlpy import Workflow, \
   WorkflowInputConnection, \
   WorkflowStepConnection, \
   WorkflowOutputConnection, \
-  ValidationException
+  ValidationException, \
+  load_document
 

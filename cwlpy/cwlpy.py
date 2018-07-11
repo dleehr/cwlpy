@@ -1,6 +1,8 @@
 import os
 import six
 import cwl_schema
+import inspect
+from cwl_schema import load_document, ValidationException
 
 CWL_VERSION_STRING = 'v1.0'
 LOADING_OPTIONS = cwl_schema.LoadingOptions()
@@ -14,8 +16,9 @@ def _is_list_of_strings(source_list):
         return False
 
 
-class ValidationException(cwl_schema.ValidationException):
-    pass
+def add_methods(source_cls, dest_cls):
+    for m in inspect.getmembers(source_cls, predicate=inspect.isfunction):
+        setattr(dest_cls, m[0], m[1])
 
 
 class TemplateDocs(object):
@@ -52,11 +55,7 @@ class TemplateDocs(object):
     }
 
 
-class Workflow(cwl_schema.Workflow):
-
-    def __init__(self, id):
-        super(Workflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
-        self.id = id
+class WorkflowMethods(object):
 
     def add_step(self, step):
         # Must be a step!
@@ -106,6 +105,16 @@ class Workflow(cwl_schema.Workflow):
             step_input_id = step_output_id
         connection.connect(step_output_id, step_input_id)
         return self
+
+
+class Workflow(cwl_schema.Workflow):
+
+    def __init__(self, id):
+        super(Workflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
+        self.id = id
+
+
+add_methods(WorkflowMethods, cwl_schema.Workflow)
 
 
 class WorkflowStep(cwl_schema.WorkflowStep):
