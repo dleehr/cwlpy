@@ -1,12 +1,5 @@
-from .common import Workflow, \
-  WorkflowStep, \
-  WorkflowStepInput, \
-  WorkflowStepOutput, \
-  InputParameter, \
-  WorkflowOutputParameter, \
-  WorkflowInputConnection, \
-  WorkflowStepConnection, \
-  WorkflowOutputConnection, \
-  ValidationException, \
-  load_document
-
+from .exceptions import ValidationException
+from .parameters import WorkflowOutputParameter, InputParameter
+from .connections import WorkflowInputConnection, WorkflowStepConnection, WorkflowOutputConnection
+from .workflow import Workflow
+from .step import WorkflowStep, WorkflowStepInput, WorkflowStepOutput
