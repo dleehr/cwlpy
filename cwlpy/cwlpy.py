@@ -55,7 +55,7 @@ class TemplateDocs(object):
     }
 
 
-class WorkflowMethods(object):
+class _Workflow(object):
 
     def add_step(self, step):
         # Must be a step!
@@ -107,22 +107,7 @@ class WorkflowMethods(object):
         return self
 
 
-class Workflow(cwl_schema.Workflow):
-
-    def __init__(self, id):
-        super(Workflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
-        self.id = id
-
-
-add_methods(WorkflowMethods, cwl_schema.Workflow)
-
-
-class WorkflowStep(cwl_schema.WorkflowStep):
-
-    def __init__(self, id, run=None):
-        super(WorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
-        if run:
-            self.set_run(run)
+class _WorkflowStep(object):
 
     def add_input(self, step_input):
         if not isinstance(step_input, cwl_schema.WorkflowStepInput):
@@ -154,10 +139,7 @@ class WorkflowStep(cwl_schema.WorkflowStep):
         return None
 
 
-class WorkflowStepInput(cwl_schema.WorkflowStepInput):
-
-    def __init__(self, id):
-        super(WorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
+class _WorkflowStepInput(object):
 
     def set_source(self, source):
         # Validate that it's a string or a list of strings
@@ -165,6 +147,43 @@ class WorkflowStepInput(cwl_schema.WorkflowStepInput):
             raise ValidationException("Source must be a string or array of strings")
         # TODO: Inspect the link and make sure the type is valid
         self.source = source
+
+
+class _WorkflowOutputParameter(object):
+
+    def set_outputSource(self, outputSource):
+        if not _is_list_of_strings(outputSource) and not isinstance(outputSource, six.string_types):
+            raise ValidationException("outputSource must be a string or array of strings")
+        # TODO: Inspect the link and make sure the type is valid
+        self.outputSource = outputSource
+
+
+add_methods(_Workflow, cwl_schema.Workflow)
+add_methods(_WorkflowStep, cwl_schema.WorkflowStep)
+add_methods(_WorkflowStepInput, cwl_schema.WorkflowStepInput)
+add_methods(_WorkflowOutputParameter, cwl_schema.WorkflowOutputParameter)
+
+# Construction subclasses
+class Workflow(cwl_schema.Workflow):
+
+    def __init__(self, id):
+        super(Workflow, self).__init__(dict(TemplateDocs.Workflow), id, LOADING_OPTIONS)
+        self.id = id
+
+
+class WorkflowStep(cwl_schema.WorkflowStep):
+
+    def __init__(self, id, run=None):
+        super(WorkflowStep, self).__init__(TemplateDocs.WorkflowStep, id, LOADING_OPTIONS)
+        if run:
+            self.set_run(run)
+
+
+class WorkflowStepInput(cwl_schema.WorkflowStepInput):
+
+    def __init__(self, id):
+        super(WorkflowStepInput, self).__init__(TemplateDocs.WorkflowStepInput, id, LOADING_OPTIONS)
+
 
 
 class WorkflowStepOutput(cwl_schema.WorkflowStepOutput):
@@ -183,12 +202,6 @@ class WorkflowOutputParameter(cwl_schema.WorkflowOutputParameter):
 
     def __init__(self, id):
         super(WorkflowOutputParameter, self).__init__(TemplateDocs.WorkflowOutputParameter, id, LOADING_OPTIONS)
-
-    def set_outputSource(self, outputSource):
-        if not _is_list_of_strings(outputSource) and not isinstance(outputSource, six.string_types):
-            raise ValidationException("outputSource must be a string or array of strings")
-        # TODO: Inspect the link and make sure the type is valid
-        self.outputSource = outputSource
 
 
 class WorkflowStepConnectionBase(object):
