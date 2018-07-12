@@ -1,7 +1,7 @@
 import cwl_schema
 import six
-from .exceptions import ValidationException
-from .utils import is_list_of_strings, add_methods, TemplateDocs, LOADING_OPTIONS
+from cwlpy.exceptions import ValidationException
+from cwlpy.utils import is_list_of_strings, add_methods, TemplateDocs, LOADING_OPTIONS
 
 
 class _WorkflowStep(object):

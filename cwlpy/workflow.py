@@ -1,7 +1,7 @@
 import cwl_schema
-from .utils import add_methods, TemplateDocs, LOADING_OPTIONS
-from .exceptions import ValidationException
-from .connections import WorkflowInputConnection, WorkflowOutputConnection, WorkflowStepConnection
+from cwlpy.utils import add_methods, TemplateDocs, LOADING_OPTIONS
+from cwlpy.exceptions import ValidationException
+from cwlpy.connections import WorkflowInputConnection, WorkflowOutputConnection, WorkflowStepConnection
 
 
 class _Workflow(object):
