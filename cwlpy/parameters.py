@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import cwl_schema
 import six
 from cwlpy.exceptions import ValidationException

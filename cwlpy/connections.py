@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import cwl_schema
 from cwlpy.exceptions import ValidationException
 from cwlpy.parameters import InputParameter, WorkflowOutputParameter

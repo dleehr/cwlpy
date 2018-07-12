@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import cwl_schema
 from cwlpy.utils import add_methods, TemplateDocs, LOADING_OPTIONS
 from cwlpy.exceptions import ValidationException
