@@ -166,7 +166,7 @@ class WorkflowWithStepsTestCase(TestCase):
 
         self.workflow.connect('step2.out_field', 'output_arg')
 
-        self.workflow.connect_output.assert_called_with(step2_obj, 'out_field', 'output_arg')
+        self.workflow.connect_output.assert_called_with(step2_obj, 'output_arg', workflow_output_id='out_field')
         self.workflow.connect_steps.assert_not_called()
         self.workflow.connect_input.assert_not_called()
 
