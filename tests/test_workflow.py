@@ -1,4 +1,5 @@
 from unittest import TestCase
+from mock import Mock
 
 from cwlpy import Workflow, WorkflowStep, InputParameter, WorkflowOutputParameter, ValidationException
 
@@ -113,3 +114,73 @@ class WorkflowWithStepsTestCase(TestCase):
         self.assertEqual(self.workflow, retval)
         self.assertEqual(retval.steps[0].out[0].id, 'output-2')
         self.assertEqual(retval.outputs[0].outputSource, 'my-step-2/output-2')
+
+    def test_find_step_by_id(self):
+        step1_obj = WorkflowStep('step1')
+        step2_obj = WorkflowStep('step2')
+        self.workflow.steps = [step1_obj, step2_obj]
+
+        self.assertEqual(self.workflow.find_step_by_id('step1'), step1_obj)
+        self.assertEqual(self.workflow.find_step_by_id('step2'), step2_obj)
+        with self.assertRaises(ValidationException):
+            self.workflow.find_step_by_id('step3')
+
+    def test_connect_step_to_step(self):
+        step1_obj = WorkflowStep('step1')
+        step2_obj = WorkflowStep('step2')
+        self.workflow.steps = [step1_obj, step2_obj]
+        self.workflow.connect_steps = Mock()
+        self.workflow.connect_input = Mock()
+        self.workflow.connect_output = Mock()
+
+        self.workflow.connect('step1.outfield', 'step2.infield')
+
+        self.workflow.connect_steps.assert_called_with(
+            step1_obj, step2_obj, 'outfield', 'infield')
+        self.workflow.connect_input.assert_not_called()
+        self.workflow.connect_output.assert_not_called()
+
+    def test_connect_input_to_step(self):
+        step1_obj = WorkflowStep('step1')
+        step2_obj = WorkflowStep('step2')
+        self.workflow.steps = [step1_obj, step2_obj]
+        self.workflow.connect_steps = Mock()
+        self.workflow.connect_input = Mock()
+        self.workflow.connect_output = Mock()
+
+        self.workflow.connect('input_arg', 'step2.infield')
+
+        self.workflow.connect_input.assert_called_with(
+            step2_obj, 'input_arg', 'infield'
+        )
+        self.workflow.connect_steps.assert_not_called()
+        self.workflow.connect_output.assert_not_called()
+
+    def test_connect_step_to_output(self):
+        step1_obj = WorkflowStep('step1')
+        step2_obj = WorkflowStep('step2')
+        self.workflow.steps = [step1_obj, step2_obj]
+        self.workflow.connect_steps = Mock()
+        self.workflow.connect_input = Mock()
+        self.workflow.connect_output = Mock()
+
+        self.workflow.connect('step2.out_field', 'output_arg')
+
+        self.workflow.connect_output.assert_called_with(step2_obj, 'out_field', 'output_arg')
+        self.workflow.connect_steps.assert_not_called()
+        self.workflow.connect_input.assert_not_called()
+
+    def test_connect_input_to_output(self):
+        step1_obj = WorkflowStep('step1')
+        step2_obj = WorkflowStep('step2')
+        self.workflow.steps = [step1_obj, step2_obj]
+        self.workflow.connect_steps = Mock()
+        self.workflow.connect_input = Mock()
+        self.workflow.connect_output = Mock()
+
+        with self.assertRaises(ValidationException):
+            self.workflow.connect('input_arg', 'output_arg')
+
+        self.workflow.connect_steps.assert_not_called()
+        self.workflow.connect_input.assert_not_called()
+        self.workflow.connect_output.assert_not_called()
