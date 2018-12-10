@@ -63,6 +63,42 @@ def connect_steps(self, output_step, input_step, step_output_id, step_input_id=N
     return self
 
 
+def find_step_by_id(self, step_id):
+    for step in self.steps:
+        if step.id == step_id:
+            return step
+    raise ValidationException("Step id not found: {}".format(step_id))
+
+
+def connect(self, source, dest):
+    """
+    Connects workflow_inputs/step_outputs to step_inputs/workflow_outputs.
+    Calls appropriate method (connect_steps, connect_output, or connect_input) based on source and dest.
+    Raises ValidationException if user tries to connect workflow input to workflow output.
+    :param self: Workflow
+    :param source: str: if contains a '.' is a step output name otherwise it is a workflow input
+    :param dest: str: if contains a '.' is a step input name otherwise it is a workflow output
+    """
+    source_is_from_step = '.' in source
+    dest_is_to_step = '.' in dest
+    if source_is_from_step:
+        source_step_id, source_id = source.split('.')
+        source_step = find_step_by_id(self, source_step_id)
+        if dest_is_to_step:
+            dest_step_id, dest_id = dest.split('.')
+            dest_step = find_step_by_id(self, dest_step_id)
+            self.connect_steps(source_step, dest_step, source_id, dest_id)
+        else:
+            self.connect_output(source_step, dest, workflow_output_id=source_id)
+    else:
+        if dest_is_to_step:
+            dest_step_id, dest_id = dest.split('.')
+            dest_step = find_step_by_id(self, dest_step_id)
+            self.connect_input(dest_step, source, dest_id)
+        else:
+            raise ValidationException("Cannot connect input to output source: {} dest: {}".format(source, dest))
+
+
 cwl_schema.Workflow.add_step = add_step
 cwl_schema.Workflow.step = step
 cwl_schema.Workflow.input_parameter_by_id = input_parameter_by_id
@@ -71,6 +107,8 @@ cwl_schema.Workflow.add_output_parameter = add_output_parameter
 cwl_schema.Workflow.connect_input = connect_input
 cwl_schema.Workflow.connect_output = connect_output
 cwl_schema.Workflow.connect_steps = connect_steps
+cwl_schema.Workflow.connect = connect
+cwl_schema.Workflow.find_step_by_id = find_step_by_id
 
 
 class Workflow(cwl_schema.Workflow):
